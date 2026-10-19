@@ -211,7 +211,19 @@ kbd{font:500 11px var(--mono);border:1px solid var(--line);border-radius:4px;pad
             <button id="plusRep" aria-label="Sumar una repetición">+1</button>
             <button id="plusFive">+5 hice más</button>
           </div>
-          <div class="row"><button class="sage" id="saveSquats">Guardar sesión</button></div>
+          <div class="row"><button class="sage" id="saveSquats">Terminé · apagar cámara</button></div>
+        </div>
+
+        <!-- Rest: sentadillas hechas, el break sigue -->
+        <div id="vRest" hidden style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+          <p class="label" style="margin:0">Sentadillas guardadas</p>
+          <p class="step-name" id="restDone">—</p>
+          <p class="cue">La cámara está apagada. Descansa, toma agua o camina un poco: el break sigue hasta que suene el aviso.</p>
+          <div class="countdown" id="restTime" aria-live="off">5:00</div>
+          <div class="row">
+            <button id="restStretch">Estirar mientras tanto</button>
+            <button class="ghost" id="restFocus">Volver al foco ya</button>
+          </div>
         </div>
 
         <!-- Stretch -->
@@ -349,6 +361,7 @@ function renderTimer(){
   document.title = timer.running ? `${fmt(rem)} · ${timer.mode==='focus'?'Foco':'Break'}` : 'Pomodoro Squats';
   const n = pomos[todayKey()] || 0;
   const inBreak = timer.mode === 'break';
+  if (!$('vRest').hidden) $('restTime').textContent = inBreak ? fmt(rem) : '0:00';
   $('snoozeBtn').hidden = !inBreak; $('skipBtn').hidden = !inBreak;
   $('tomatoes').innerHTML = Array.from({length:Math.max(4,n)},(_,i)=>`<b class="${i<n?'on':''}"></b>`).join('');
 }
@@ -458,8 +471,8 @@ function animate(cv, getMove){
 /* ---------- Views ---------- */
 let stopSquatDemo = null, stopStretchDemo = null;
 function showView(v){
-  $('vChoose').hidden = v!=='choose'; $('vSquats').hidden = v!=='squats'; $('vStretch').hidden = v!=='stretch';
-  $('backToChoices').hidden = v==='choose';
+  $('vChoose').hidden = v!=='choose'; $('vSquats').hidden = v!=='squats'; $('vStretch').hidden = v!=='stretch'; $('vRest').hidden = v!=='rest';
+  $('backToChoices').hidden = v==='choose' || v==='rest';
   if (v!=='squats'){ stopCamera(); stopSquatDemo?.(); stopSquatDemo=null; }
   if (v!=='stretch'){ stopRoutine(); }
   if (v==='squats' && !stopSquatDemo){
@@ -486,7 +499,7 @@ function addRep(n=1, fromCam=false){
   const before = reps; reps = Math.max(0, reps+n); if (!fromCam && n>0) extra += n;
   renderReps();
   if (fromCam){ beep(660,90,1); if (reps % 5 === 0 || reps === settings.targetReps) say(String(reps)); }
-  if (before < settings.targetReps && reps >= settings.targetReps){ say('¡Meta cumplida! Si quieres, sigue sumando.'); toast('Meta cumplida'); }
+  if (before < settings.targetReps && reps >= settings.targetReps){ say('¡Meta cumplida! Sigue sumando o pulsa Terminé para apagar la cámara.'); toast('Meta cumplida'); }
 }
 $('plusRep').onclick = () => addRep(1);
 $('minusRep').onclick = () => addRep(-1);
@@ -494,8 +507,16 @@ $('plusFive').onclick = () => addRep(5);
 $('saveSquats').onclick = () => {
   if (!reps){ toast('Todavía no hay repeticiones'); return; }
   addEntry({type:'Sentadillas', reps, target:settings.targetReps, source: usedCam ? 'camera' : 'manual'});
-  toast(`Guardado: ${reps} sentadillas`); reps = 0; extra = 0; usedCam = false; renderReps(); stopCamera(); showView('choose');
+  toast(`Guardado: ${reps} sentadillas`); stopCamera();
+  if (timer.mode === 'break'){
+    // la cámara se apaga pero el break se completa
+    $('restDone').textContent = `${reps} sentadillas`; showView('rest'); renderTimer();
+    say('Sentadillas guardadas. Descansa hasta que termine el break.');
+  } else showView('choose');
+  reps = 0; extra = 0; usedCam = false; renderReps();
 };
+$('restStretch').onclick = () => showView('stretch');
+$('restFocus').onclick = () => $('skipBtn').click();
 
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 async function loadLandmarker(){

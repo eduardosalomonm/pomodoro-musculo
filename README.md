@@ -23,7 +23,7 @@ Usa siempre la misma dirección (`localhost:5180`): el historial se guarda por d
 - Pomodoro configurable. Al acabar cada bloque te avisa con sonido, voz y notificación, y vuelve a insistir una vez si en 60 s no has elegido break.
 - Puedes posponer el break 5 min o saltarlo. Opcionalmente, el siguiente bloque de foco empieza solo.
 - El timer sobrevive a recargas. Si la app estuvo cerrada más de 10 min, no lanza un break viejo.
-- Sentadillas: cuenta por el ángulo de la rodilla con MediaPipe Pose. La profundidad es ajustable (suave 120°, media 105°, profunda 90°) y también puedes sumar o restar a mano (+1, −1, +5).
+- Sentadillas: al terminar, "Terminé" guarda las reps y apaga la cámara; el break sigue con su cuenta atrás hasta completarse. Cuenta por el ángulo de la rodilla con MediaPipe Pose. La profundidad es ajustable (suave 120°, media 105°, profunda 90°) y también puedes sumar o restar a mano (+1, −1, +5).
 - Estiramiento: 3 rutinas (cuello y hombros, espalda de oficina, pausa de 1 min) con figura animada, cuenta atrás y voz.
 - Registro: meta diaria de sentadillas, minutos estirando, racha de días seguidos, gráfica de 7 días y ejercicios anotados a mano. En cada entrada puedes sumar reps o corregir el total.
 - Respaldo: exportar e importar en JSON.
