@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pomodoro Squats</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#d9573b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: columna de foco (timer + break) a la izquierda, registro a la derecha; una columna en móvil */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --ink:#1d2621; --muted:#5f6b64; --line:#dde3dd;
+  --accent:#d9573b; --accent-ink:#ffffff; --sage:#4f7d63; --sage-soft:#e3eee6; --warn:#b7791f;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", system-ui, -apple-system, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141a17; --surface:#1c2420; --ink:#e7ece8; --muted:#9aa79f; --line:#2c3631;
+  --accent:#ef7356; --accent-ink:#1a0f0b; --sage:#7fb495; --sage-soft:#22322a; --warn:#e0a84a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141a17; --surface:#1c2420; --ink:#e7ece8; --muted:#9aa79f; --line:#2c3631;
+  --accent:#ef7356; --accent-ink:#1a0f0b; --sage:#7fb495; --sage-soft:#22322a; --warn:#e0a84a; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font:700 clamp(28px,4vw,40px)/1.05 var(--display);margin:0;letter-spacing:-.02em}
+h1 span{color:var(--accent)}
+h2{font:700 20px/1.2 var(--display);margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:0}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.label{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+button{font:700 15px/1 var(--body);border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:12px 16px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.sage{background:var(--sage);color:var(--surface);border-color:var(--sage)}
+button.ghost{background:transparent}
+button.sm{padding:8px 10px;font-size:13px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,select{font:16px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+input[type=number]{width:80px}
+
+/* Timer */
+.timer{display:grid;grid-template-columns:auto minmax(0,1fr);gap:24px;align-items:center}
+@media (max-width:520px){.timer{grid-template-columns:minmax(0,1fr);justify-items:center;text-align:center}}
+.ring{width:200px;height:200px;position:relative;max-width:100%}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .time{position:absolute;inset:0;display:grid;place-items:center;font:500 44px/1 var(--mono);font-variant-numeric:tabular-nums}
+.mode-pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-weight:700;font-size:14px;background:var(--sage-soft);color:var(--sage);width:max-content}
+.mode-pill.focus{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.mode-pill i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.tomatoes{display:flex;gap:6px}
+.tomatoes b{width:14px;height:14px;border-radius:50%;border:2px solid var(--accent)}
+.tomatoes b.on{background:var(--accent)}
+details summary{cursor:pointer;color:var(--muted);font-size:14px}
+.settings{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px}
+.settings label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+
+/* Break chooser */
+.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:520px){.choices{grid-template-columns:minmax(0,1fr)}}
+.choice{text-align:left;padding:16px;display:flex;flex-direction:column;gap:6px;line-height:1.4;border-radius:12px}
+.choice strong{font:700 18px/1.2 var(--display)}
+.choice span{font-weight:400;color:var(--muted);font-size:14px}
+.choice:hover{border-color:var(--accent)}
+
+/* Squat / stretch stage */
+.stage{position:relative;background:var(--bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;max-width:100%}
+.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.stage video,.stage .overlay{transform:scaleX(-1)}
+.stage .hint{position:absolute;left:10px;right:10px;bottom:10px;background:color-mix(in srgb,var(--surface) 88%,transparent);border-radius:8px;padding:8px 10px;font-size:14px}
+.counter{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.counter .big{font:700 64px/1 var(--display);font-variant-numeric:tabular-nums}
+.counter .of{color:var(--muted);font-size:18px}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--sage);width:0;transition:width .3s}
+.routines{display:flex;flex-direction:column;gap:10px}
+.routine{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;font-weight:400}
+.routine strong{display:block;font:700 16px/1.3 var(--display)}
+.routine small{color:var(--muted)}
+.step-name{font:700 24px/1.2 var(--display);margin:0}
+.cue{margin:0;color:var(--muted);max-width:60ch}
+.steps{display:flex;gap:4px}
+.steps i{flex:1;height:5px;border-radius:9px;background:var(--line)}
+.steps i.done{background:var(--sage)}
+.steps i.now{background:var(--accent)}
+.countdown{font:500 32px/1 var(--mono);font-variant-numeric:tabular-nums}
+
+/* Log */
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat{display:flex;flex-direction:column;gap:4px}
+.stat b{font:700 28px/1 var(--display);font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted);font-size:13px}
+.chart{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:end;height:140px}
+.chart .col-b{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;min-width:0}
+.chart .b{width:100%;max-width:34px;border-radius:6px 6px 2px 2px;background:var(--sage);min-height:2px}
+.chart .b.today{background:var(--accent)}
+.chart small{font:500 11px var(--mono);color:var(--muted)}
+.chart em{font:500 11px var(--mono);font-style:normal;font-variant-numeric:tabular-nums}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.log li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-top:1px solid var(--line);align-items:center}
+.log li .what{font-weight:700}
+.log li .meta{grid-column:1;color:var(--muted);font-size:13px}
+.log li .acts{grid-column:2;grid-row:1/3;display:flex;gap:6px}
+.chip{font:500 11px var(--mono);padding:2px 6px;border-radius:6px;background:var(--sage-soft);color:var(--sage);margin-left:6px;vertical-align:2px}
+.chip.cam{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.empty{color:var(--muted);font-size:14px;margin:0}
+kbd{font:500 11px var(--mono);border:1px solid var(--line);border-radius:4px;padding:1px 4px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:700;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Pomodoro <span>Squats</span></h1>
+      <p class="sub">Trabaja en bloques. En cada break, elige: sentadillas contadas con la cámara o una rutina corta de estiramiento.</p>
+    </div>
+    <p class="sub" style="font-size:13px">Sin cuenta. Todo queda en este navegador.</p>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <!-- TIMER -->
+      <section class="card" aria-labelledby="t-title">
+        <div class="timer">
+          <div class="ring">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle cx="60" cy="60" r="54" fill="none" stroke="var(--line)" stroke-width="8"/>
+              <circle id="ringArc" cx="60" cy="60" r="54" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="0"/>
+            </svg>
+            <div class="time" id="time" aria-live="off">25:00</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+            <span class="mode-pill focus" id="modePill"><i></i><span id="t-title">Foco</span></span>
+            <div class="tomatoes" id="tomatoes" aria-label="Pomodoros completados hoy"></div>
+            <div class="row">
+              <button class="primary" id="startBtn">Empezar</button>
+              <button id="resetBtn">Reiniciar</button>
+              <button class="ghost" id="breakNowBtn">Break ahora</button>
+            </div>
+            <details>
+              <summary>Ajustes</summary>
+              <div class="settings">
+                <label for="focusMin">Foco (min)<input id="focusMin" type="number" min="1" max="120" value="25"></label>
+                <label for="breakMin">Break (min)<input id="breakMin" type="number" min="1" max="30" value="5"></label>
+                <label for="targetReps">Meta sentadillas<input id="targetReps" type="number" min="1" max="200" value="15"></label>
+                <label for="dailyGoal">Meta diaria<input id="dailyGoal" type="number" min="5" max="1000" value="100"></label>
+                <label for="depth">Profundidad<select id="depth"><option value="120">Suave (120°)</option><option value="105">Media (105°)</option><option value="90">Profunda (90°)</option></select></label>
+                <label for="autoFocus">Tras el break<select id="autoFocus"><option value="0">Esperar</option><option value="1">Seguir solo</option></select></label>
+                <label for="voiceOn">Voz<select id="voiceOn"><option value="1">Activada</option><option value="0">Silencio</option></select></label>
+              </div>
+            </details>
+            <p class="sub" style="font-size:12px">Atajos: <kbd>Espacio</kbd> empezar/pausar · <kbd>B</kbd> break · <kbd>+</kbd>/<kbd>−</kbd> reps</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- BREAK -->
+      <section class="card" id="breakCard" aria-labelledby="b-title">
+        <div class="row" style="justify-content:space-between">
+          <h2 id="b-title">Tu break</h2>
+          <div class="row">
+            <button class="sm ghost" id="backToChoices" hidden>← Elegir otro</button>
+            <button class="sm" id="snoozeBtn" hidden>Posponer 5 min</button>
+            <button class="sm ghost" id="skipBtn" hidden>Saltar break</button>
+          </div>
+        </div>
+
+        <div id="vChoose">
+          <p class="sub" style="margin-bottom:12px" id="chooseHint">Cuando termine el bloque de foco te aviso. También puedes empezar un break ahora.</p>
+          <div class="choices">
+            <button class="choice" id="pickSquats">
+              <strong>Sentadillas</strong>
+              <span>La cámara detecta tu cuerpo y cuenta cada repetición. También puedes sumarlas a mano.</span>
+            </button>
+            <button class="choice" id="pickStretch">
+              <strong>Estiramiento</strong>
+              <span>Para el cuello rígido y la espalda tensa de estar sentado. Eliges una rutina corta y la sigues con demo, timer y voz.</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Squats -->
+        <div id="vSquats" hidden style="display:flex;flex-direction:column;gap:14px">
+          <div class="stage">
+            <canvas id="squatDemo" width="480" height="360" aria-label="Demostración de sentadilla"></canvas>
+            <video id="video" playsinline muted hidden></video>
+            <canvas class="overlay" id="overlay" hidden></canvas>
+            <div class="hint" id="camHint">Ponte de lado o de frente, a 2–3 m, para que se vean cadera, rodillas y tobillos.</div>
+          </div>
+          <div class="counter"><span class="big" id="repCount">0</span><span class="of">/ <span id="repTarget">15</span> sentadillas</span></div>
+          <div class="bar"><i id="repBar"></i></div>
+          <div class="row">
+            <button class="primary" id="camBtn">Escanear con cámara</button>
+            <button id="minusRep" aria-label="Restar una repetición">−1</button>
+            <button id="plusRep" aria-label="Sumar una repetición">+1</button>
+            <button id="plusFive">+5 hice más</button>
+          </div>
+          <div class="row"><button class="sage" id="saveSquats">Guardar sesión</button></div>
+        </div>
+
+        <!-- Stretch -->
+        <div id="vStretch" hidden style="display:flex;flex-direction:column;gap:14px">
+          <div class="routines" id="routineList"></div>
+          <div id="player" hidden style="display:flex;flex-direction:column;gap:14px">
+            <div class="steps" id="stepBars"></div>
+            <div class="stage"><canvas id="stretchDemo" width="480" height="360" aria-label="Demostración del estiramiento"></canvas></div>
+            <div class="row" style="justify-content:space-between;align-items:flex-start">
+              <div style="min-width:0;flex:1">
+                <p class="label" id="stepIdx">Paso 1 de 4</p>
+                <p class="step-name" id="stepName">—</p>
+                <p class="cue" id="stepCue"></p>
+              </div>
+              <div class="countdown" id="stepTime">0:30</div>
+            </div>
+            <div class="row">
+              <button id="prevStep">← Anterior</button>
+              <button class="primary" id="playPause">Pausa</button>
+              <button id="nextStep">Siguiente →</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- LOG -->
+    <div class="col">
+      <section class="card" aria-labelledby="l-title">
+        <h2 id="l-title">Registro</h2>
+        <div class="stats">
+          <div class="stat"><b><span id="sToday">0</span><small style="font-size:14px;color:var(--muted)"> / <span id="sGoal">100</span></small></b><small>sentadillas hoy</small></div>
+          <div class="stat"><b id="sStretch">0</b><small>min estirando hoy</small></div>
+          <div class="stat"><b id="sStreak">0</b><small>días seguidos</small></div>
+        </div>
+        <div class="bar" title="Progreso de la meta diaria"><i id="goalBar"></i></div>
+        <div>
+          <p class="label" style="margin:0 0 10px">Repeticiones, últimos 7 días</p>
+          <div class="chart" id="chart"></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="m-title">
+        <h2 id="m-title">Anotar a mano</h2>
+        <form class="row" id="manualForm">
+          <select id="mType" aria-label="Ejercicio">
+            <option>Sentadillas</option><option>Flexiones</option><option>Zancadas</option><option>Plancha (seg)</option><option>Saltos</option>
+          </select>
+          <input id="mReps" type="number" min="1" max="999" value="10" aria-label="Repeticiones">
+          <button class="sage" type="submit">Añadir</button>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="h-title">
+        <div class="row" style="justify-content:space-between">
+          <h2 id="h-title">Historial</h2>
+          <span class="sub" style="font-size:13px" id="exampleNote" hidden>Ejemplos: bórralos cuando quieras</span>
+        </div>
+        <ul class="log" id="log"></ul>
+        <div class="row">
+          <button class="sm" id="exportBtn">Exportar respaldo</button>
+          <label class="sm" for="importFile" style="font-size:13px;color:var(--muted);cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:7px 10px">Importar respaldo</label>
+          <input id="importFile" type="file" accept="application/json" hidden>
+          <button class="sm ghost" id="clearExamples" hidden>Quitar ejemplos</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+};
+
+/* ---------- Settings ---------- */
+const settings = Object.assign({focusMin:25, breakMin:5, targetReps:15, dailyGoal:100, depth:105, autoFocus:0, voice:1}, store.get('ps.settings', {}));
+const FIELDS = {focusMin:'focusMin', breakMin:'breakMin', targetReps:'targetReps', dailyGoal:'dailyGoal', depth:'depth', autoFocus:'autoFocus', voiceOn:'voice'};
+for (const [id,key] of Object.entries(FIELDS)) {
+  $(id).value = String(settings[key]);
+  $(id).addEventListener('change', () => {
+    const n = parseInt($(id).value,10);
+    settings[key] = $(id).tagName === 'SELECT' ? n : Math.max(1, n || 1);
+    store.set('ps.settings', settings);
+    if (!timer.running && (key === 'focusMin' || key === 'breakMin')) resetTimer();
+    if (key === 'targetReps') renderReps();
+    if (key === 'dailyGoal') render();
+  });
+}
+
+/* ---------- Sound, voice, notifications ---------- */
+let audioCtx;
+function beep(freq=880, ms=180, times=2){
+  try{
+    audioCtx ??= new AudioContext();
+    for (let i=0;i<times;i++){
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = freq; o.connect(g); g.connect(audioCtx.destination);
+      const t = audioCtx.currentTime + i*(ms/1000+0.08);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.25,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+ms/1000);
+      o.start(t); o.stop(t+ms/1000+0.02);
+    }
+  }catch{}
+}
+function say(text){
+  if (!settings.voice || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text); u.lang = 'es-ES'; u.rate = 1.02;
+  speechSynthesis.speak(u);
+}
+function notify(title, body){
+  beep();
+  try{ if (Notification.permission === 'granted' && document.hidden) new Notification(title, {body}); }catch{}
+}
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove('show'),2200); }
+
+/* ---------- Pomodoro timer ---------- */
+const timer = Object.assign({ mode:'focus', running:false, endAt:0, remaining: settings.focusMin*60, total: settings.focusMin*60, snoozed:false }, store.get('ps.timer', {}));
+const saveTimer = () => store.set('ps.timer', timer);
+let breakNudge = 0;
+const todayKey = () => new Date().toISOString().slice(0,10);
+let pomos = store.get('ps.pomos', {});
+function fmt(s){ s=Math.max(0,Math.ceil(s)); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+function renderTimer(){
+  const rem = timer.running ? (timer.endAt - Date.now())/1000 : timer.remaining;
+  $('time').textContent = fmt(rem);
+  $('ringArc').style.strokeDashoffset = 339.3 * (1 - Math.max(0,rem)/timer.total);
+  $('ringArc').setAttribute('stroke', timer.mode==='focus' ? 'var(--accent)' : 'var(--sage)');
+  const pill = $('modePill'); pill.classList.toggle('focus', timer.mode==='focus');
+  $('t-title').textContent = timer.mode==='focus' ? 'Foco' : 'Break';
+  $('startBtn').textContent = timer.running ? 'Pausar' : (rem < timer.total ? 'Seguir' : 'Empezar');
+  document.title = timer.running ? `${fmt(rem)} · ${timer.mode==='focus'?'Foco':'Break'}` : 'Pomodoro Squats';
+  const n = pomos[todayKey()] || 0;
+  const inBreak = timer.mode === 'break';
+  $('snoozeBtn').hidden = !inBreak; $('skipBtn').hidden = !inBreak;
+  $('tomatoes').innerHTML = Array.from({length:Math.max(4,n)},(_,i)=>`<b class="${i<n?'on':''}"></b>`).join('');
+}
+function setMode(mode){
+  timer.mode = mode; timer.running = false;
+  timer.total = timer.remaining = (mode==='focus' ? settings.focusMin : settings.breakMin) * 60;
+  timer.snoozed = false; saveTimer();
+}
+function resetTimer(){ setMode(timer.mode); renderTimer(); }
+function startTimer(){
+  timer.endAt = Date.now() + timer.remaining*1000; timer.running = true; saveTimer();
+  try{ if (Notification.permission === 'default') Notification.requestPermission(); }catch{}
+}
+function pauseTimer(){ timer.remaining = (timer.endAt - Date.now())/1000; timer.running = false; saveTimer(); }
+function beginBreak(fromTimer){
+  if (fromTimer && !timer.snoozed){ pomos[todayKey()] = (pomos[todayKey()]||0)+1; store.set('ps.pomos', pomos); }
+  setMode('break'); startTimer();
+  showView('choose');
+  $('chooseHint').textContent = `Tienes ${settings.breakMin} min. ¿Qué te toca?`;
+  $('breakCard').scrollIntoView({behavior:'smooth', block:'start'});
+  notify('¡Break!', 'Levántate: sentadillas o estiramiento.'); say('Hora del break. Elige sentadillas o estiramiento.');
+  // si en 60 s no eliges nada, insiste una vez
+  clearTimeout(breakNudge);
+  breakNudge = setTimeout(() => { if (!$('vChoose').hidden && timer.mode === 'break') notify('Sigues sentado', 'Tu break está corriendo. Elige uno.'); }, 60000);
+}
+function endBreak(){
+  setMode('focus'); stopCamera(); stopRoutine();
+  notify('Vuelta al foco', 'El break terminó. Empieza el siguiente bloque.'); say('Se terminó el break. De vuelta al foco.');
+  if (settings.autoFocus){ startTimer(); $('chooseHint').textContent = 'Break terminado. El siguiente bloque ya empezó.'; }
+  else $('chooseHint').textContent = 'Break terminado. Pulsa Empezar para el siguiente bloque.';
+  showView('choose');
+}
+$('snoozeBtn').onclick = () => {
+  clearTimeout(breakNudge); stopCamera(); stopRoutine(); showView('choose');
+  setMode('focus'); timer.total = timer.remaining = 300; timer.snoozed = true; startTimer(); renderTimer();
+  $('chooseHint').textContent = 'Break pospuesto 5 minutos.'; toast('Te aviso en 5 min');
+};
+$('skipBtn').onclick = () => {
+  clearTimeout(breakNudge); stopCamera(); stopRoutine(); showView('choose');
+  setMode('focus'); if (settings.autoFocus) startTimer(); renderTimer();
+  $('chooseHint').textContent = 'Break saltado.';
+};
+setInterval(() => {
+  if (timer.running && Date.now() >= timer.endAt){
+    timer.running = false; timer.remaining = 0;
+    timer.mode === 'focus' ? beginBreak(true) : endBreak();
+  }
+  renderTimer();
+}, 250);
+$('startBtn').onclick = () => { timer.running ? pauseTimer() : startTimer(); renderTimer(); };
+$('resetBtn').onclick = () => { clearTimeout(breakNudge); setMode('focus'); renderTimer(); };
+$('breakNowBtn').onclick = () => { beginBreak(false); renderTimer(); };
+
+/* ---------- Stick figure ---------- */
+const BASE = {tilt:0, nod:0, bend:0, fold:0, shrug:0, crouch:0, lS:12, lE:0, rS:12, rE:0};
+function drawFigure(cv, pose){
+  const c = cv.getContext('2d'), W = cv.width, H = cv.height, s = H/240;
+  const css = getComputedStyle(document.documentElement);
+  c.clearRect(0,0,W,H);
+  c.save(); c.translate(W/2, 0); c.scale(s,s);
+  c.strokeStyle = css.getPropertyValue('--line').trim(); c.lineWidth = 2;
+  c.beginPath(); c.moveTo(-90,222); c.lineTo(90,222); c.stroke();
+  const P = {...BASE, ...pose};
+  const rot = (x,y,deg) => { const r=deg*Math.PI/180; return [x*Math.cos(r)-y*Math.sin(r), x*Math.sin(r)+y*Math.cos(r)]; };
+  const hip = [0, 140 + P.crouch*34];
+  c.strokeStyle = css.getPropertyValue('--ink').trim(); c.lineWidth = 7; c.lineCap = 'round'; c.lineJoin = 'round';
+  const line = (...pts) => { c.beginPath(); c.moveTo(...pts[0]); pts.slice(1).forEach(p=>c.lineTo(...p)); c.stroke(); };
+  // legs
+  for (const side of [-1,1]){
+    const h = [hip[0]+side*12, hip[1]], f = [side*24, 220];
+    const k = [(h[0]+f[0])/2 + side*P.crouch*22, (h[1]+f[1])/2 - P.crouch*6];
+    line(h,k,f);
+  }
+  // torso
+  const len = 62*(1 - P.fold*0.55);
+  const [tx,ty] = rot(0,-len,P.bend);
+  const neck = [hip[0]+tx, hip[1]+ty];
+  line(hip, neck);
+  // arms
+  c.strokeStyle = css.getPropertyValue('--accent').trim();
+  for (const [side,S,E] of [[-1,P.lS,P.lE],[1,P.rS,P.rE]]){
+    const [sx,sy] = rot(side*18, 4 - P.shrug*7, P.bend);
+    const sh = [neck[0]+sx, neck[1]+sy];
+    const a1 = P.bend + side*(-S);
+    const [ux,uy] = rot(0, 30, a1); const el = [sh[0]+ux, sh[1]+uy];
+    const [fx,fy] = rot(0, 28, a1 + side*(-E)); const ha = [el[0]+fx, el[1]+fy];
+    line([neck[0], neck[1]+4 - P.shrug*7].map((v,i)=>i? v : v), sh, el, ha);
+  }
+  // head
+  const [hx,hy] = rot(0,-18,P.bend+P.tilt);
+  c.fillStyle = css.getPropertyValue('--ink').trim();
+  c.beginPath(); c.arc(neck[0]+hx, neck[1]+hy + P.nod*9, 13, 0, Math.PI*2); c.fill();
+  c.restore();
+}
+const lerp = (a,b,t) => { const o={}; for (const k in BASE) o[k]=(a[k]??BASE[k])+((b[k]??BASE[k])-(a[k]??BASE[k]))*t; return o; };
+const ease = t => 0.5 - 0.5*Math.cos(t*Math.PI*2); // 0→1→0
+function animate(cv, getMove){
+  let raf;
+  const loop = ts => {
+    const m = getMove(); if (m) drawFigure(cv, lerp(m.a, m.b, ease((ts/1000 % m.period)/m.period)));
+    raf = requestAnimationFrame(loop);
+  };
+  raf = requestAnimationFrame(loop);
+  return () => cancelAnimationFrame(raf);
+}
+
+/* ---------- Views ---------- */
+let stopSquatDemo = null, stopStretchDemo = null;
+function showView(v){
+  $('vChoose').hidden = v!=='choose'; $('vSquats').hidden = v!=='squats'; $('vStretch').hidden = v!=='stretch';
+  $('backToChoices').hidden = v==='choose';
+  if (v!=='squats'){ stopCamera(); stopSquatDemo?.(); stopSquatDemo=null; }
+  if (v!=='stretch'){ stopRoutine(); }
+  if (v==='squats' && !stopSquatDemo){
+    stopSquatDemo = animate($('squatDemo'), () => camOn ? null : {a:{lS:80,rS:80}, b:{crouch:1, lS:85,rS:85, fold:.15}, period:2.6});
+  }
+  if (v==='stretch'){ $('player').hidden = true; $('routineList').hidden = false; }
+}
+$('pickSquats').onclick = () => { clearTimeout(breakNudge); reps = 0; extra = 0; renderReps(); showView('squats'); say('Sentadillas. Activa la cámara o cuenta a mano.'); };
+$('pickStretch').onclick = () => { clearTimeout(breakNudge); showView('stretch'); };
+$('backToChoices').onclick = () => showView('choose');
+
+/* ---------- Squats + pose detection ---------- */
+let wakeLock = null;
+async function keepAwake(on){
+  try{ if (on && !wakeLock) wakeLock = await navigator.wakeLock?.request('screen'); else if (!on){ await wakeLock?.release(); wakeLock = null; } }catch{ wakeLock = null; }
+}
+let reps = 0, extra = 0, camOn = false, stream = null, landmarker = null, camRaf = 0, usedCam = false;
+function renderReps(){
+  const t = settings.targetReps;
+  $('repCount').textContent = reps; $('repTarget').textContent = t;
+  $('repBar').style.width = Math.min(100, reps/t*100) + '%';
+}
+function addRep(n=1, fromCam=false){
+  const before = reps; reps = Math.max(0, reps+n); if (!fromCam && n>0) extra += n;
+  renderReps();
+  if (fromCam){ beep(660,90,1); if (reps % 5 === 0 || reps === settings.targetReps) say(String(reps)); }
+  if (before < settings.targetReps && reps >= settings.targetReps){ say('¡Meta cumplida! Si quieres, sigue sumando.'); toast('Meta cumplida'); }
+}
+$('plusRep').onclick = () => addRep(1);
+$('minusRep').onclick = () => addRep(-1);
+$('plusFive').onclick = () => addRep(5);
+$('saveSquats').onclick = () => {
+  if (!reps){ toast('Todavía no hay repeticiones'); return; }
+  addEntry({type:'Sentadillas', reps, target:settings.targetReps, source: usedCam ? 'camera' : 'manual'});
+  toast(`Guardado: ${reps} sentadillas`); reps = 0; extra = 0; usedCam = false; renderReps(); stopCamera(); showView('choose');
+};
+
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+async function loadLandmarker(){
+  if (landmarker) return landmarker;
+  const { PoseLandmarker, FilesetResolver } = await import(`${MP}/vision_bundle.mjs`);
+  const files = await FilesetResolver.forVisionTasks(`${MP}/wasm`);
+  const opts = d => ({ baseOptions:{ modelAssetPath:'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task', delegate:d }, runningMode:'VIDEO', numPoses:1 });
+  try{ landmarker = await PoseLandmarker.createFromOptions(files, opts('GPU')); }
+  catch{ landmarker = await PoseLandmarker.createFromOptions(files, opts('CPU')); }
+  return landmarker;
+}
+function angle(a,b,c){
+  const ab=[a.x-b.x,a.y-b.y], cb=[c.x-b.x,c.y-b.y];
+  const cos=(ab[0]*cb[0]+ab[1]*cb[1])/(Math.hypot(...ab)*Math.hypot(...cb)||1);
+  return Math.acos(Math.max(-1,Math.min(1,cos)))*180/Math.PI;
+}
+async function startCamera(){
+  $('camBtn').disabled = true; $('camHint').textContent = 'Cargando el modelo de detección…';
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user', width:{ideal:640}, height:{ideal:480}}, audio:false});
+    const v = $('video'); v.srcObject = stream; await v.play();
+    await loadLandmarker();
+  }catch(e){
+    stopCamera();
+    $('camHint').textContent = e?.name === 'NotAllowedError'
+      ? 'Sin permiso de cámara. Actívalo en el navegador o cuenta con +1.'
+      : 'No pude iniciar la cámara o el modelo. Revisa tu conexión y vuelve a intentar, o cuenta con +1.';
+    return;
+  }
+  camOn = true; usedCam = true; keepAwake(true);
+  $('video').hidden = false; $('overlay').hidden = false; $('squatDemo').hidden = true;
+  $('camBtn').disabled = false; $('camBtn').textContent = 'Apagar cámara';
+  say('Cámara lista. Empieza cuando quieras.');
+  runDetection();
+}
+function stopCamera(){
+  camOn = false; cancelAnimationFrame(camRaf); if (!rt.r) keepAwake(false);
+  stream?.getTracks().forEach(t=>t.stop()); stream = null;
+  $('video').hidden = true; $('overlay').hidden = true; $('squatDemo').hidden = false;
+  $('camBtn').disabled = false; $('camBtn').textContent = 'Escanear con cámara';
+}
+$('camBtn').onclick = () => camOn ? stopCamera() : startCamera();
+
+const BONES = [[11,12],[11,23],[12,24],[23,24],[11,13],[13,15],[12,14],[14,16],[23,25],[25,27],[24,26],[26,28]];
+function runDetection(){
+  const v = $('video'), cv = $('overlay'), c = cv.getContext('2d');
+  let lastT = -1, smooth = null, phase = 'up', lowest = 180;
+  const css = getComputedStyle(document.documentElement);
+  const tick = () => {
+    if (!camOn) return;
+    if (v.currentTime !== lastT && v.videoWidth){
+      lastT = v.currentTime;
+      if (cv.width !== v.videoWidth){ cv.width = v.videoWidth; cv.height = v.videoHeight; }
+      const res = landmarker.detectForVideo(v, performance.now());
+      c.clearRect(0,0,cv.width,cv.height);
+      const lm = res.landmarks?.[0];
+      if (lm){
+        c.lineWidth = 5; c.strokeStyle = css.getPropertyValue('--accent').trim(); c.fillStyle = css.getPropertyValue('--surface').trim();
+        for (const [a,b] of BONES){ c.beginPath(); c.moveTo(lm[a].x*cv.width, lm[a].y*cv.height); c.lineTo(lm[b].x*cv.width, lm[b].y*cv.height); c.stroke(); }
+        for (const i of [23,24,25,26,27,28]){ c.beginPath(); c.arc(lm[i].x*cv.width, lm[i].y*cv.height, 6, 0, 7); c.fill(); }
+        // use the leg the camera sees best
+        const vis = i => lm[i].visibility ?? 0;
+        const L = vis(23)+vis(25)+vis(27), R = vis(24)+vis(26)+vis(28);
+        const [h,k,a] = L >= R ? [23,25,27] : [24,26,28];
+        if (Math.min(vis(h),vis(k),vis(a)) < 0.5){
+          $('camHint').textContent = 'No veo bien tus piernas. Aléjate un poco para que se vean cadera, rodillas y tobillos.';
+        } else {
+          const ang = angle(lm[h], lm[k], lm[a]);
+          smooth = smooth == null ? ang : smooth*0.6 + ang*0.4;
+          lowest = Math.min(lowest, smooth);
+          if (phase === 'up' && smooth < settings.depth){ phase = 'down'; }
+          else if (phase === 'down' && smooth > 155){ phase = 'up'; addRep(1, true); lowest = 180; }
+          $('camHint').textContent = phase === 'down' ? `Abajo · rodilla ${Math.round(smooth)}°. Ahora sube.` : `Arriba · rodilla ${Math.round(smooth)}°. Baja hasta ~${settings.depth}°.`;
+        }
+      } else {
+        $('camHint').textContent = 'Buscando tu cuerpo… colócate frente a la cámara.';
+      }
+    }
+    camRaf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+/* ---------- Stretch routines ---------- */
+const MOVES = {
+  neckL:  {name:'Oreja al hombro izquierdo', cue:'Inclina la cabeza despacio. Deja el hombro abajo y respira.', a:{tilt:0}, b:{tilt:-32}, period:4},
+  neckR:  {name:'Oreja al hombro derecho', cue:'Mismo gesto hacia el otro lado, sin forzar.', a:{tilt:0}, b:{tilt:32}, period:4},
+  chin:   {name:'Mentón al pecho', cue:'Baja el mentón, alarga la nuca y vuelve arriba lentamente.', a:{nod:0}, b:{nod:1}, period:4},
+  shrug:  {name:'Hombros arriba y abajo', cue:'Sube los hombros hacia las orejas, aguanta un segundo y suéltalos.', a:{shrug:0}, b:{shrug:1}, period:2},
+  chest:  {name:'Apertura de pecho', cue:'Codos atrás, junta los omóplatos y abre el pecho.', a:{lS:60,lE:80,rS:60,rE:80}, b:{lS:95,lE:40,rS:95,rE:40}, period:3.5},
+  reach:  {name:'Brazos al cielo', cue:'Entrelaza las manos arriba y estírate hacia el techo.', a:{lS:150,rS:150,lE:20,rE:20}, b:{lS:172,rS:172,shrug:.4}, period:4},
+  sideL:  {name:'Inclinación lateral izquierda', cue:'Brazo derecho arriba, inclina el tronco a la izquierda.', a:{rS:165}, b:{bend:-18,rS:170,lS:20}, period:4},
+  sideR:  {name:'Inclinación lateral derecha', cue:'Brazo izquierdo arriba, inclina el tronco a la derecha.', a:{lS:165}, b:{bend:18,lS:170,rS:20}, period:4},
+  fold:   {name:'Flexión hacia adelante', cue:'Rodillas suaves, deja caer el tronco y los brazos. Sube vértebra a vértebra.', a:{fold:0,crouch:.1}, b:{fold:.85,crouch:.25,lS:-5,rS:-5}, period:5},
+  squat:  {name:'Sentadilla suave', cue:'Baja como si te sentaras y vuelve a subir. Sin prisa.', a:{lS:80,rS:80}, b:{crouch:1,lS:85,rS:85,fold:.15}, period:3},
+};
+const ROUTINES = [
+  {id:'neck', name:'Cuello y hombros', why:'Para el cuello rígido de mirar la pantalla', steps:[['neckL',30],['neckR',30],['chin',30],['shrug',30],['chest',30]]},
+  {id:'back', name:'Espalda de oficina', why:'Para la espalda tensa de estar sentado', steps:[['reach',30],['sideL',30],['sideR',30],['fold',40],['chest',30],['squat',30]]},
+  {id:'quick', name:'Pausa de 1 minuto', why:'Cuando el break es corto', steps:[['shrug',20],['neckL',10],['neckR',10],['reach',20]]},
+];
+const total = r => r.steps.reduce((s,[,t])=>s+t,0);
+$('routineList').innerHTML = ROUTINES.map(r=>`
+  <button class="routine" data-id="${r.id}">
+    <span><strong>${r.name}</strong><small>${r.why} · ${r.steps.length} ejercicios</small></span>
+    <span class="label">${fmt(total(r))} min</span>
+  </button>`).join('');
+$('routineList').addEventListener('click', e => {
+  const b = e.target.closest('[data-id]'); if (b) startRoutine(ROUTINES.find(r=>r.id===b.dataset.id));
+});
+
+const rt = { r:null, i:0, left:0, paused:false, int:0, startedAt:0 };
+function startRoutine(r){
+  Object.assign(rt, {r, i:0, paused:false, startedAt:Date.now()}); keepAwake(true);
+  $('routineList').hidden = true; $('player').hidden = false;
+  stopStretchDemo?.(); stopStretchDemo = animate($('stretchDemo'), () => rt.r ? MOVES[rt.r.steps[rt.i][0]] : null);
+  goStep(0);
+  clearInterval(rt.int);
+  rt.int = setInterval(() => {
+    if (rt.paused || !rt.r) return;
+    rt.left--;
+    if (rt.left === 3) say('Tres, dos, uno');
+    if (rt.left <= 0){ rt.i < rt.r.steps.length-1 ? goStep(rt.i+1) : finishRoutine(); return; }
+    renderStep();
+  }, 1000);
+}
+function goStep(i){
+  rt.i = i; rt.left = rt.r.steps[i][1];
+  const m = MOVES[rt.r.steps[i][0]];
+  beep(740,120,1); say(`${m.name}. ${m.cue}`); renderStep();
+}
+function renderStep(){
+  const m = MOVES[rt.r.steps[rt.i][0]];
+  $('stepIdx').textContent = `${rt.r.name} · paso ${rt.i+1} de ${rt.r.steps.length}`;
+  $('stepName').textContent = m.name; $('stepCue').textContent = m.cue;
+  $('stepTime').textContent = fmt(rt.left);
+  $('stepBars').innerHTML = rt.r.steps.map((_,j)=>`<i class="${j<rt.i?'done':j===rt.i?'now':''}"></i>`).join('');
+  $('playPause').textContent = rt.paused ? 'Seguir' : 'Pausa';
+  $('prevStep').disabled = rt.i===0;
+}
+function finishRoutine(){
+  const secs = Math.round((Date.now()-rt.startedAt)/1000);
+  addEntry({type:'Estiramiento', detail:rt.r.name, durationSec:secs, source:'routine'});
+  say('Rutina completa. Bien hecho.'); toast(`Guardado: ${rt.r.name}`);
+  stopRoutine(); showView('choose');
+}
+function stopRoutine(){ clearInterval(rt.int); if (rt.r && !camOn) keepAwake(false); rt.r = null; stopStretchDemo?.(); stopStretchDemo = null; try{ speechSynthesis.cancel(); }catch{} }
+$('playPause').onclick = () => { rt.paused = !rt.paused; renderStep(); };
+$('nextStep').onclick = () => rt.i < rt.r.steps.length-1 ? goStep(rt.i+1) : finishRoutine();
+$('prevStep').onclick = () => rt.i > 0 && goStep(rt.i-1);
+
+/* ---------- Log ---------- */
+let log = store.get('ps.log', null);
+if (log === null){
+  // Ejemplos marcados, para que el registro no arranque vacío
+  const d = n => Date.now() - n*86400000;
+  log = [
+    {id:'ex1', ts:d(1), type:'Sentadillas', reps:18, target:15, source:'camera', example:true},
+    {id:'ex2', ts:d(1)+3600e3, type:'Estiramiento', detail:'Cuello y hombros', durationSec:150, source:'routine', example:true},
+    {id:'ex3', ts:d(2), type:'Sentadillas', reps:15, target:15, source:'manual', example:true},
+    {id:'ex4', ts:d(3), type:'Flexiones', reps:10, source:'manual', example:true},
+  ];
+}
+function save(){ store.set('ps.log', log); render(); }
+function addEntry(e){ log.unshift({id:crypto.randomUUID?.() ?? String(Date.now()), ts:Date.now(), ...e}); save(); }
+const dayKey = ts => { const d=new Date(ts); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+function render(){
+  const today = dayKey(Date.now());
+  const isToday = e => dayKey(e.ts) === today;
+  const sq = log.filter(e=>isToday(e) && e.type==='Sentadillas').reduce((s,e)=>s+(e.reps||0),0);
+  $('sToday').textContent = sq; $('sGoal').textContent = settings.dailyGoal;
+  $('goalBar').style.width = Math.min(100, sq/settings.dailyGoal*100) + '%';
+  $('clearExamples').hidden = !log.some(e=>e.example);
+  $('sStretch').textContent = Math.round(log.filter(e=>isToday(e) && e.durationSec).reduce((s,e)=>s+e.durationSec,0)/60);
+  // streak
+  const days = new Set(log.map(e=>dayKey(e.ts)));
+  let streak = 0; for (let i = days.has(today) ? 0 : 1; days.has(dayKey(Date.now()-i*86400000)); i++) streak++;
+  $('sStreak').textContent = streak;
+  // chart
+  const names = ['D','L','M','X','J','V','S'];
+  const week = Array.from({length:7},(_,i)=>{ const ts = Date.now()-(6-i)*86400000; const k = dayKey(ts);
+    return {k, label: i===6 ? 'Hoy' : names[new Date(ts).getDay()], reps: log.filter(e=>dayKey(e.ts)===k).reduce((s,e)=>s+(e.reps||0),0)}; });
+  const max = Math.max(10, ...week.map(w=>w.reps));
+  $('chart').innerHTML = week.map((w,i)=>`<div class="col-b"><em>${w.reps||''}</em><div class="b ${i===6?'today':''}" style="height:${w.reps/max*100}%"></div><small>${w.label}</small></div>`).join('');
+  // history
+  $('exampleNote').hidden = !log.some(e=>e.example);
+  $('log').innerHTML = log.length ? log.slice(0,40).map(e=>{
+    const when = new Date(e.ts).toLocaleString('es', {weekday:'short', hour:'2-digit', minute:'2-digit'});
+    const what = e.reps != null ? `${e.reps} ${e.type.toLowerCase()}` : `${e.type}: ${e.detail}`;
+    const meta = [when, e.target ? `meta ${e.target}${e.reps>e.target?` · +${e.reps-e.target} extra`:''}` : '', e.durationSec ? `${fmt(e.durationSec)} min` : ''].filter(Boolean).join(' · ');
+    const chip = e.source==='camera' ? '<span class="chip cam">cámara</span>' : e.source==='routine' ? '<span class="chip">rutina</span>' : '<span class="chip">a mano</span>';
+    return `<li data-id="${e.id}"><span class="what">${what}${chip}${e.example?' <span class="chip">ejemplo</span>':''}</span><span class="meta">${meta}</span>
+      <span class="acts">${e.reps!=null?`<button class="sm" data-act="more" title="Sumar repeticiones que hiciste de más">+ reps</button>`:''}<button class="sm ghost" data-act="del" aria-label="Borrar registro">Borrar</button></span></li>`;
+  }).join('') : '<li><p class="empty">Aún no hay registros. Completa un break o anota algo a mano.</p></li>';
+}
+$('log').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const id = b.closest('li').dataset.id, entry = log.find(x=>x.id===id);
+  if (b.dataset.act === 'del'){
+    if (b.dataset.confirm){ log = log.filter(x=>x.id!==id); save(); toast('Registro borrado'); }
+    else { b.dataset.confirm = 1; b.textContent = '¿Seguro?'; setTimeout(()=>{ if (b.isConnected){ delete b.dataset.confirm; b.textContent='Borrar'; } }, 3000); }
+  } else if (b.dataset.act === 'more'){
+    const li = b.closest('li'); if (li.querySelector('form')) return;
+    const f = document.createElement('form'); f.className = 'row'; f.style.gridColumn = '1 / -1';
+    f.innerHTML = `<label class="sub" style="font-size:13px" for="more-${id}">Reps</label><input id="more-${id}" type="number" min="0" max="999" value="5">
+      <button class="sm sage" data-mode="add">Sumar</button><button class="sm" data-mode="set">Fijar total</button>`;
+    f.onsubmit = ev => {
+      ev.preventDefault(); const n = parseInt(f.querySelector('input').value,10); if (!(n>=0)) return;
+      if (ev.submitter?.dataset.mode === 'set'){ entry.reps = n; toast(`Total corregido: ${n}`); }
+      else if (n>0){ entry.reps += n; toast(`+${n} reps sumadas`); }
+      delete entry.example; save();
+    };
+    li.appendChild(f); f.querySelector('input').focus();
+  }
+});
+$('manualForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const n = parseInt($('mReps').value,10); if (!n || n<1) { toast('Escribe cuántas repeticiones'); return; }
+  addEntry({type:$('mType').value, reps:n, source:'manual'}); toast(`Añadido: ${n} ${$('mType').value.toLowerCase()}`);
+});
+
+$('exportBtn').onclick = () => {
+  const data = JSON.stringify({app:'pomodoro-squats', version:1, exported:new Date().toISOString(), settings, pomos, log}, null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], {type:'application/json'}));
+  a.download = `pomodoro-squats-${todayKey()}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+};
+$('importFile').onchange = async () => {
+  try{
+    const d = JSON.parse(await $('importFile').files[0].text());
+    if (!Array.isArray(d.log)) throw 0;
+    const ids = new Set(log.map(e=>e.id)); let n = 0;
+    for (const e of d.log) if (e && e.id && !ids.has(e.id) && typeof e.ts === 'number'){ log.push(e); n++; }
+    log.sort((a,b)=>b.ts-a.ts);
+    if (d.pomos) for (const [k,v] of Object.entries(d.pomos)) pomos[k] = Math.max(pomos[k]||0, v);
+    store.set('ps.pomos', pomos); save(); toast(`Importados ${n} registros`);
+  }catch{ toast('Ese archivo no es un respaldo de Pomodoro Squats'); }
+  $('importFile').value = '';
+};
+$('clearExamples').onclick = () => { log = log.filter(e=>!e.example); save(); toast('Ejemplos quitados'); };
+
+document.addEventListener('keydown', e => {
+  if (e.target.closest?.('input,select,textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.code === 'Space'){ e.preventDefault(); $('startBtn').click(); }
+  else if (e.key === 'b' || e.key === 'B') $('breakNowBtn').click();
+  else if (!$('vSquats').hidden && (e.key === '+' || e.key === '=' || e.key === 'ArrowUp')){ e.preventDefault(); addRep(1); }
+  else if (!$('vSquats').hidden && (e.key === '-' || e.key === 'ArrowDown')){ e.preventDefault(); addRep(-1); }
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// un timer que terminó hace más de 10 min (app cerrada) no dispara un break viejo
+if (timer.running && Date.now() - timer.endAt > 600000) setMode('focus');
+renderTimer(); renderReps(); render(); showView('choose');
+</script>
+</body>
+</html>
