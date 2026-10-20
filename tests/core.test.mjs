@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {normalizeSettings,dayKey,dayOffset,cleanLog,parseBackup,summarize,jointAngle,RepTracker} from '../core.js';
+process.env.TZ='Europe/Madrid';
+const entry=(id,extra={})=>({id,ts:new Date('2026-10-21T14:00:00+02:00').getTime(),type:'Sentadillas',reps:15,source:'manual',...extra});
+test('settings clamp values and reject invalid enumerations',()=>{assert.equal(normalizeSettings({focusMin:999}).focusMin,120);assert.equal(normalizeSettings({pushupTarget:-8}).pushupTarget,1);assert.equal(normalizeSettings({depth:170}).depth,105);assert.equal(normalizeSettings(null).pushupTarget,8);});
+test('local day counts midnight correctly in Madrid',()=>assert.equal(dayKey(new Date('2026-10-21T00:30:00+02:00').getTime()),'2026-10-21'));
+test('calendar offsets survive daylight saving changes',()=>{const now=new Date('2026-10-26T00:30:00+01:00').getTime();assert.equal(dayKey(dayOffset(now,-1)),'2026-10-25');assert.equal(dayKey(dayOffset(now,-2)),'2026-10-24');});
+test('examples never contribute to any statistic',()=>{const s=summarize([entry('example',{example:true})],entry('x').ts);assert.equal(s.squats,0);assert.equal(s.streak,0);assert.equal(s.week.at(-1).reps,0);});
+test('pushups and plank seconds are counted separately',()=>{const cleaned=cleanLog([entry('p',{type:'Plancha (seg)',reps:60}),entry('f',{type:'Flexiones',reps:8}),entry('s')]);const stats=summarize(cleaned,entry('x').ts);assert.equal(stats.squats,15);assert.equal(stats.pushups,8);assert.equal(stats.week.at(-1).reps,23);assert.equal(cleaned.find(e=>e.id==='p').durationSec,60);});
+test('backups validate type, timestamp, quantities, IDs and version',()=>{for(const e of [entry('x',{reps:'5'}),entry('x',{ts:NaN}),entry('x',{type:'<img>'}),entry('x',{durationSec:-1,type:'Estiramiento'})])assert.throws(()=>parseBackup({app:'pomodoro-squats',version:1,log:[e]}));assert.throws(()=>parseBackup({log:[]}));assert.throws(()=>parseBackup({app:'pomodoro-squats',version:2,log:[entry('x'),entry('x')]}));assert.equal(parseBackup({app:'pomodoro-squats',version:1,log:[entry('x')]}).log.length,1);});
+test('camera tracker requires a full cycle, stable extension and resets on occlusion',()=>{const t=new RepTracker(100);let time=0,count=0;const frames=(angle,n=24)=>{for(let i=0;i<n;i++){time+=40;if(t.update(angle,time))count++;}};frames(80);frames(175);assert.equal(count,0);frames(80);frames(175);assert.equal(count,1);frames(80);t.update(NaN,time);frames(175);assert.equal(count,1);frames(80,1);frames(175);assert.equal(count,1);});
+test('angles compensate for video aspect ratio',()=>{const a={x:0,y:0},b={x:.5,y:0},c={x:.5,y:1};assert.equal(jointAngle(a,b,c,640,480),90);});

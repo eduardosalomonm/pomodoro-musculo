@@ -1,11 +1,37 @@
 {
   "name": "Pomodoro Squats",
   "short_name": "Squats",
-  "description": "Pomodoro con breaks activos: sentadillas contadas con la cámara o estiramientos guiados.",
+  "description": "Bloques de foco con pausas activas: sentadillas, flexiones y estiramientos guiados.",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f3f5f2",
-  "theme_color": "#d9573b",
+  "background_color": "#f5f3ed",
+  "theme_color": "#b94029",
   "lang": "es",
-  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "./",
+  "scope": "./",
+  "orientation": "any",
+  "categories": [
+    "productivity",
+    "health"
+  ]
 }

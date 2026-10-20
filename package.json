@@ -1,0 +1,13 @@
+{
+  "name": "pomodoro-squats",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/core.test.mjs",
+    "test:browser": "node tests/browser.mjs && node tests/offline-camera.mjs && node tests/mobile-share.mjs && node tests/update.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  },
+  "version": "0.3.0"
+}
