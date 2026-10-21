@@ -1,18 +1,18 @@
 import {RepTracker,poseChanged} from './pose-counter.js';
 export const calibrationKind=(exercise,style)=>exercise==='pushups'?`pushups-${style==='wall'?'wall':'floor'}`:'squats';
-export const profileKey=(kind,facing,aspect)=>`${kind}:${facing}:${aspect>=1?'landscape':'portrait'}`;
+export const profileKey=(kind,facing,aspect,lens='')=>`${kind}:${facing}:${aspect>=1?'landscape':'portrait'}${lens?`:${lens}`:''}`;
 export function makeProfile(upper,lower,context,ts=Date.now()){
   const range=upper-lower;
   if(!Number.isFinite(upper)||!Number.isFinite(lower)||upper<130||upper>180||lower<35||range<30||range>130)return null;
   const up=upper-Math.min(12,Math.max(6,range*.15)),down=lower+Math.min(15,Math.max(6,range*.18));
-  return {version:1,kind:context.kind,facing:context.facing,aspect:context.aspect,upper,lower,up,down,ts};
+  return {version:1,kind:context.kind,facing:context.facing,aspect:context.aspect,lens:context.lens||'',upper,lower,up,down,ts};
 }
 export function cleanProfile(p){
-  if(!p||p.version!==1||!['squats','pushups-floor','pushups-wall'].includes(p.kind)||!['user','environment'].includes(p.facing)||!Number.isFinite(p.aspect)||p.aspect<.3||p.aspect>3||!Number.isFinite(p.ts)||p.ts<=0)return null;
+  if(!p||(p.lens!=null&&(typeof p.lens!=='string'||!/^([a-z0-9]+@[a-z0-9.]+)?$/.test(p.lens)||p.lens.length>80))||p.version!==1||!['squats','pushups-floor','pushups-wall'].includes(p.kind)||!['user','environment'].includes(p.facing)||!Number.isFinite(p.aspect)||p.aspect<.3||p.aspect>3||!Number.isFinite(p.ts)||p.ts<=0)return null;
   return makeProfile(p.upper,p.lower,p,p.ts);
 }
-export function cleanProfiles(value){const out={};if(!value||typeof value!=='object')return out;for(const raw of Object.values(value)){const p=cleanProfile(raw);if(p)out[profileKey(p.kind,p.facing,p.aspect)]=p;}return out;}
-export function compatibleProfile(p,context){return !!p&&p.kind===context.kind&&p.facing===context.facing&&Math.abs(p.aspect-context.aspect)<.12;}
+export function cleanProfiles(value){const out={};if(!value||typeof value!=='object')return out;for(const raw of Object.values(value)){const p=cleanProfile(raw);if(p)out[profileKey(p.kind,p.facing,p.aspect,p.lens)]=p;}return out;}
+export function compatibleProfile(p,context){return !!p&&p.kind===context.kind&&p.facing===context.facing&&(p.lens||'')===(context.lens||'')&&Math.abs(p.aspect-context.aspect)<.12;}
 const median=values=>{const a=[...values].sort((a,b)=>a-b);return a[Math.floor(a.length/2)];};
 export class CalibrationGuide {
   constructor(context,profile=null){this.context={...context};this.savedProfile=profile;this.restart();}

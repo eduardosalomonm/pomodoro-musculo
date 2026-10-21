@@ -1,3 +1,4 @@
+import {openCamera} from './camera-options.js';
 import {createCameraGuide} from './camera-guide.js';
 import {measurePose,poseChanged} from './pose-counter.js';
 import {calibrationKind} from './calibration-model.js';
@@ -121,6 +122,7 @@ $('pickSquats').onclick=()=>pickActivity('squats');$('pickPushups').onclick=()=>
 let exercise=null;
 const exerciseTarget=()=>exercise?.kind==='pushups'?settings.pushupTarget:settings.targetReps;
 function renderExercise(){
+  $('cameraPlacement').textContent=exercise?.kind==='pushups'?'Apoya el iPhone fijo y colócate de lado. Encuadra hombro, codo, muñeca, cadera y rodilla; puedes usar suelo o pared.':'Apoya el iPhone fijo y colócate de lado. Para sentadillas, encuadra cadera, rodillas y tobillos; la cabeza puede quedar fuera. Procura mantener las piernas cerca del centro de la imagen.';
   cameraGuide?.summary();
   const push=exercise?.kind==='pushups';$('exerciseTitle').textContent=push?'Flexiones':'Sentadillas';$('repUnit').textContent=push?'flexiones':'sentadillas';$('pushupStyleLabel').hidden=!push;$('pushupStyle').value=settings.pushupStyle;
   $('exerciseDemo').setAttribute('aria-label',push?`Demostración de flexión ${settings.pushupStyle==='wall'?'contra la pared':'en suelo'}`:'Demostración de sentadilla');
@@ -148,16 +150,29 @@ let wakeLock=null,wakePending=false,wakeWanted=false;
 async function keepAwake(on){wakeWanted=on;if(!on){const lock=wakeLock;wakeLock=null;try{await lock?.release();}catch{}return;}if(wakePending||wakeLock||document.hidden)return;wakePending=true;try{const lock=await navigator.wakeLock?.request('screen');if(wakeWanted&&!document.hidden){wakeLock=lock;lock?.addEventListener('release',()=>{if(wakeLock===lock)wakeLock=null;});}else await lock?.release();}catch{}finally{wakePending=false;}}
 let camOn=false,camLoading=false,stream=null,landmarker=null,modelPromise=null,camRaf=0,camGeneration=0,tracker=null;
 let facing=store.get('ps.cameraFacing','user');if(!['user','environment'].includes(facing))facing='user';$('cameraFacing').value=facing;
-const cameraContext=()=>({kind:calibrationKind(exercise?.kind,settings.pushupStyle),facing,aspect:$('video').videoWidth&&$('video').videoHeight?$('video').videoWidth/$('video').videoHeight:4/3});
+let wideCamera=store.get('ps.cameraWide',false)===true&&facing==='environment',cameraDevice=store.get('ps.cameraDevice',''),cameraLens='',cameraDevices=[];
+if(typeof cameraDevice!=='string')cameraDevice='';
+function renderCameraOptions(){
+  $('wideCamera').setAttribute('aria-pressed',String(wideCamera));$('wideCamera').textContent=wideCamera?'Volver al encuadre automático':'Probar encuadre amplio · trasera';
+  for(const id of ['wideCamera','cameraLens','cameraFacing'])$(id).disabled=camLoading||cameraGuide.active;
+  $('cameraLensLabel').hidden=cameraDevices.length<2;
+  $('cameraLens').replaceChildren(new Option('Automática', ''),...cameraDevices.map((d,i)=>new Option(d.label||`Cámara ${i+1}`,d.deviceId)));
+  $('cameraLens').value=cameraDevices.some(d=>d.deviceId===cameraDevice)?cameraDevice:'';
+}
+const cameraContext=()=>({kind:calibrationKind(exercise?.kind,settings.pushupStyle),facing,lens:cameraLens,aspect:$('video').videoWidth&&$('video').videoHeight?$('video').videoWidth/$('video').videoHeight:4/3});
 const cameraGuide=createCameraGuide({store,getContext:cameraContext,getReady:()=>camOn,toast,say,announce,
   onBegin:()=>{const token={resume:timer.mode==='break'&&timer.running,id:exercise?.id};if(token.resume)pauseTimer();return token;},
   onEnd:token=>{if(token?.resume&&exercise?.id===token.id&&timer.mode==='break'&&!timer.running)startTimer();},
   onReset:()=>tracker?.reset(),
-  onLock:active=>{document.body.classList.toggle('is-calibrating',active);for(const id of ['startBtn','resetBtn','snoozeBtn','skipBtn','pushupStyle','cameraFacing','plusRep','minusRep','plusFive','saveExercise','settingsBtn','testCalibration','forgetCalibration'])$(id).disabled=active;if(!active)renderReps();},
+  onLock:active=>{document.body.classList.toggle('is-calibrating',active);for(const id of ['startBtn','resetBtn','snoozeBtn','skipBtn','pushupStyle','cameraFacing','wideCamera','cameraLens','plusRep','minusRep','plusFive','saveExercise','settingsBtn','testCalibration','forgetCalibration'])$(id).disabled=active;if(!active)renderReps();},
   onCancel:()=>{if(camLoading)stopCamera();else{cameraGuide.cancel();$('camHint').textContent='Calibración cancelada. Puedes seguir con el conteo o contar a mano.';}}
 });
 $('calibrateBtn').onclick=()=>{if(!exercise||camLoading)return;if(camOn)cameraGuide.start();else{cameraGuide.prepare();startCamera(true);}};
-$('cameraFacing').onchange=()=>{const restart=camOn;stopCamera();facing=$('cameraFacing').value;store.set('ps.cameraFacing',facing);cameraGuide.summary();if(restart)startCamera();};
+function saveCameraChoice(){store.set('ps.cameraFacing',facing);store.set('ps.cameraWide',wideCamera);store.set('ps.cameraDevice',cameraDevice);$('cameraFacing').value=facing;cameraLens='';cameraGuide.summary();renderCameraOptions();}
+$('cameraFacing').onchange=()=>{const restart=camOn;const next=$('cameraFacing').value;stopCamera();facing=next;wideCamera=false;cameraDevice='';saveCameraChoice();$('wideCameraStatus').textContent='Puedes probar el encuadre amplio con la cámara trasera.';if(restart)startCamera();};
+$('wideCamera').onclick=()=>{const next=!wideCamera;stopCamera();wideCamera=next;facing='environment';cameraDevice='';saveCameraChoice();startCamera();};
+$('cameraLens').onchange=()=>{const next=$('cameraLens').value,restart=camOn;stopCamera();cameraDevice=next;saveCameraChoice();if(restart)startCamera();};
+renderCameraOptions();
 matchMedia('(orientation: portrait)').addEventListener('change',()=>{if(camOn||camLoading){stopCamera();$('camHint').textContent='La orientación cambió. Vuelve a activar la cámara con este encuadre y calibra si hace falta.';}});
 
 const MP='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
@@ -168,13 +183,16 @@ async function loadLandmarker(){
 }
 async function startCamera(calibrate=false){
   const generation=++camGeneration;const active=()=>generation===camGeneration&&view==='exercise'&&exercise&&!document.hidden;
-  camLoading=true;$('calibrateBtn').disabled=true;$('camBtn').disabled=false;$('camBtn').textContent='Cancelar cámara';$('camHint').textContent='Preparando la cámara y el modelo. La primera vez puede tardar unos segundos.';
+  camLoading=true;renderCameraOptions();$('wideCameraStatus').textContent=wideCamera?'Buscando el encuadre más amplio disponible…':'Preparando la cámara seleccionada…';$('calibrateBtn').disabled=true;$('camBtn').disabled=false;$('camBtn').textContent='Cancelar cámara';$('camHint').textContent='Preparando la cámara y el modelo. La primera vez puede tardar unos segundos.';
   let requested;
   try{
-    requested=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:640},height:{ideal:480},frameRate:{ideal:15,max:24}},audio:false});
-    if(!active()){requested.getTracks().forEach(t=>t.stop());return;}
-    stream=requested;const actualFacing=stream.getVideoTracks?.()[0]?.getSettings?.().facingMode;if(['user','environment'].includes(actualFacing)&&actualFacing!==facing){facing=actualFacing;$('cameraFacing').value=facing;store.set('ps.cameraFacing',facing);toast('Se usa la cámara disponible. Comprueba el encuadre antes de calibrar.');}const v=$('video');v.srcObject=stream;v.playsInline=true;v.muted=true;await v.play();if(!active())return;await loadLandmarker();if(!active())return;
-    camLoading=false;camOn=true;tracker=new RepTracker(exercise.kind==='pushups'?100:settings.depth);keepAwake(true);$('video').classList.toggle('rear-camera',facing==='environment');$('overlay').classList.toggle('rear-camera',facing==='environment');
+    const result=await openCamera({media:navigator.mediaDevices,facing,wide:wideCamera,deviceId:cameraDevice,active,onStream:next=>{stream=requested=next;}});
+    if(!result||!active())return;
+    requested=stream=result.stream;cameraDevices=result.devices;cameraLens=result.lens;
+    if(result.fallback){cameraDevice='';store.set('ps.cameraDevice','');toast('La lente elegida no está disponible. Se usa la cámara automática.');}
+    $('wideCameraStatus').textContent=wideCamera?(result.ultraWide?'Ultra gran angular seleccionado. Comprueba el encuadre y calibra antes de contar.':result.zoomMin?'Zoom al mínimo permitido. Si necesitas más campo de visión, prueba otra lente disponible.':'Safari no permite confirmar un encuadre más amplio en esta cámara. Si aparece otra lente, puedes probarla.'):result.ultraWide?'Ultra gran angular seleccionado. Calibra con este encuadre.':'Encuadre automático. Puedes probar el ultra gran angular con «Probar encuadre amplio».';
+    const actualFacing=stream.getVideoTracks?.()[0]?.getSettings?.().facingMode;if(['user','environment'].includes(actualFacing)&&actualFacing!==facing){facing=actualFacing;$('cameraFacing').value=facing;store.set('ps.cameraFacing',facing);toast('Se usa la cámara disponible. Comprueba el encuadre antes de calibrar.');}const v=$('video');v.srcObject=stream;v.playsInline=true;v.muted=true;await v.play();if(!active())return;await loadLandmarker();if(!active())return;
+    camLoading=false;camOn=true;renderCameraOptions();tracker=new RepTracker(exercise.kind==='pushups'?100:settings.depth);keepAwake(true);$('video').classList.toggle('rear-camera',facing==='environment');$('overlay').classList.toggle('rear-camera',facing==='environment');
     $('video').hidden=false;$('overlay').hidden=false;$('exerciseDemo').hidden=true;$('camBtn').disabled=false;$('camBtn').textContent='Apagar cámara';
     stream.getVideoTracks?.().forEach(track=>track.addEventListener('ended',()=>{if(generation===camGeneration){stopCamera();$('camHint').textContent='La cámara se interrumpió. Tus repeticiones se conservan; puedes reactivarla o seguir a mano.';}}));
     cameraGuide.summary();if(calibrate)cameraGuide.start();else say('Cámara lista. Empieza con el cuerpo extendido.');runDetection(generation);
@@ -183,7 +201,7 @@ async function startCamera(calibrate=false){
     $('camHint').textContent=e?.name==='NotAllowedError'?(requested?'El navegador no pudo mostrar la cámara. Abre la app directamente en Safari o Chrome y vuelve a activarla, o cuenta a mano.':'Cámara sin permiso. Actívalo en el navegador o utiliza los botones +1 y +5.'):e?.name==='NotFoundError'?'No se encontró una cámara. Puedes contar con +1 y +5.':'No se pudo cargar la cámara o el modelo. Comprueba la conexión o cuenta con +1 y +5.';
   }
 }
-function stopCamera(){camGeneration++;camOn=false;camLoading=false;cameraGuide.cancel();$('trackingQuality').textContent='Cámara apagada';cancelAnimationFrame(camRaf);stream?.getTracks().forEach(t=>t.stop());stream=null;$('video').pause();$('video').srcObject=null;$('video').hidden=true;$('overlay').hidden=true;$('exerciseDemo').hidden=false;$('camBtn').disabled=false;$('camBtn').textContent='Activar cámara';tracker?.reset();keepAwake(!!rt.r&&!rt.paused);}
+function stopCamera(){camGeneration++;camOn=false;camLoading=false;cameraGuide.cancel();$('trackingQuality').textContent='Cámara apagada';$('wideCameraStatus').textContent=wideCamera?'Encuadre amplio elegido. Activa la cámara para comprobar las lentes disponibles.':'Prueba el encuadre amplio para buscar el ultra gran angular trasero que Safari permita usar.';cancelAnimationFrame(camRaf);stream?.getTracks().forEach(t=>t.stop());stream=null;$('video').pause();$('video').srcObject=null;$('video').hidden=true;$('overlay').hidden=true;$('exerciseDemo').hidden=false;$('camBtn').disabled=false;$('camBtn').textContent='Activar cámara';tracker?.reset();renderCameraOptions();keepAwake(!!rt.r&&!rt.paused);}
 $('camBtn').onclick=()=>camOn||camLoading?stopCamera():startCamera();
 const BONES=[[11,12],[11,23],[12,24],[23,24],[11,13],[13,15],[12,14],[14,16],[23,25],[25,27],[24,26],[26,28]];
 function runDetection(generation){

@@ -1,4 +1,4 @@
-# Pomodoro Squats · Beta 0.5.0
+# Pomodoro Squats · Beta 0.6.0
 
 Bloques de foco y pausas con movimiento: sentadillas, flexiones y estiramientos guiados. Sin cuenta; el historial se guarda en este navegador. El vídeo se procesa en el dispositivo.
 
@@ -24,6 +24,12 @@ Abre http://localhost:5180. Usa siempre la misma dirección y puerto: cada direc
 4. En Ayuda y privacidad están las instrucciones de instalación y el enlace para reportar problemas. Los comentarios de GitHub son públicos y requieren cuenta; no adjuntar respaldos personales.
 
 Esta beta incluye iconos PNG para Android y un icono específico para la pantalla de inicio de iPhone. La vista de ejercicio compacta el temporizador en móvil. Incluye una imagen de presentación al compartir el enlace y evita indexación en buscadores mientras siga en beta.
+
+## Nuevo en la beta 0.6.0
+
+- Encuadre amplio con la cámara trasera: búsqueda de ultra gran angular y zoom mínimo verificado, con alternativa manual entre las cámaras que exponga el navegador.
+- Mensajes que distinguen lente identificada, zoom mínimo y falta de acceso al encuadre amplio. No se confunden los valores de zoom del navegador con la etiqueta 0,5 de la app Cámara del iPhone.
+- Repeticiones conservadas al cambiar de lente y calibración separada por lente y zoom. Guía de sentadillas centrada en cadera, rodillas y tobillos.
 
 ## Nuevo en la beta 0.5.0
 
@@ -80,6 +86,14 @@ Los navegadores pueden retrasar procesos en segundo plano. El Pomodoro usa una h
 
 Exporta un respaldo periódicamente. Si el navegador impide guardar, la app muestra un aviso para que exportes antes de cerrar. No hay sincronización entre dispositivos ni coordinación de sesiones simultáneas en varias pestañas.
 
+## Encuadre amplio en iPhone
+
+En el ejercicio, «Probar encuadre amplio · trasera» solicita la cámara trasera, busca una lente identificada como ultra gran angular y aplica el zoom mínimo permitido. Tras dar permiso aparece un selector si Safari ofrece varias cámaras. Los nombres y el acceso dependen del dispositivo y del navegador; no se promete 0,5 cuando Safari no lo expone. La interfaz confirma la lente o indica la limitación. Se puede volver al encuadre automático. Una lente guardada que desaparece vuelve a la selección automática.
+
+Para sentadillas deben verse cadera, rodillas y tobillos; la cabeza puede quedar fuera. Mantén las piernas hacia el centro de la imagen, también con ultra gran angular, y calibra con el iPhone fijo. El vídeo se muestra completo, sin recortarlo para llenar la vista. La calibración queda separada por lente, zoom y orientación; los perfiles antiguos se conservan pero se vuelven a medir cuando no se conoce su lente. Las preferencias de cámara y perfiles permanecen en el dispositivo.
+
+Referencias: [capacidades de zoom de Safari](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/) y [capacidades, restricciones y ajustes de captura](https://www.w3.org/TR/mediacapture-streams/#constrainable-interface).
+
 ## Comprobaciones
 
 No necesita instalación ni compilación para funcionar. Para las pruebas de desarrollo, usa Node y, para los recorridos de navegador, Playwright:
@@ -100,7 +114,7 @@ Las pruebas de cámara cubren ciclos cortos, discontinuidades, diferentes frecue
 
 ## Archivos
 
-`index.html` y `styles.css` definen la interfaz; `app.js`, los flujos y dispositivos; `core.js`, validación y fechas; `pose-counter.js`, medición y ciclos; `calibration-model.js` y `camera-guide.js`, calibración y guía; `routine-model.js` y `routine-editor.js`, validación y edición de rutinas; `figure.js` y `routines.js`, demostraciones y rutinas. `boot.js` protege el arranque; `companion.js` contiene bienvenida, compartir, instalación, ayuda y actualización; `release.js` identifica la versión. `sw.js` conserva un paquete completo por versión para abrir sin conexión.
+`index.html` y `styles.css` definen la interfaz; `app.js`, los flujos y dispositivos; `camera-options.js`, selección de lente y zoom; `core.js`, validación y fechas; `pose-counter.js`, medición y ciclos; `calibration-model.js` y `camera-guide.js`, calibración y guía; `routine-model.js` y `routine-editor.js`, validación y edición de rutinas; `figure.js` y `routines.js`, demostraciones y rutinas. `boot.js` protege el arranque; `companion.js` contiene bienvenida, compartir, instalación, ayuda y actualización; `release.js` identifica la versión. `sw.js` conserva un paquete completo por versión para abrir sin conexión.
 
 ## Dirección visual
 
