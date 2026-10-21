@@ -1,3 +1,5 @@
+import {initRoutineEditor} from './routine-editor.js';
+import {cleanRoutines,routineTotal,ROUTINE_LIMIT} from './routine-model.js';
 import {initCompanion} from './companion.js';
 import {DEFAULTS,normalizeSettings,dayKey,dayOffset,fmt,escapeHTML as esc,cleanEntry,cleanLog,cleanDaily,parseBackup,summarize,jointAngle,RepTracker} from './core.js';
 import {animate} from './figure.js';
@@ -9,6 +11,8 @@ const store={
   remove(k){try{localStorage.removeItem(k);}catch{$('storageWarning').hidden=false;}}
 };
 let settings=normalizeSettings(store.get('ps.settings',{}));
+let customRoutines=cleanRoutines(store.get('ps.routines',[]));
+let pendingRoutine=null;
 let log=cleanLog(store.get('ps.log',[]));
 let pomos=cleanDaily(store.get('ps.pomos',{})), focusMinutes=cleanDaily(store.get('ps.focusMinutes',{}));
 const uid=()=>crypto.randomUUID?.()??`${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -31,7 +35,9 @@ function notificationState(){const state='Notification'in window?Notification.pe
 $('notificationBtn').onclick=async()=>{try{await Notification.requestPermission();}catch{}notificationState();};
 function applyTheme(){if(settings.theme==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=settings.theme;document.querySelector('meta[name="theme-color"]').content=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();}
 function populateSettings(){for(const k of Object.keys(DEFAULTS))if($(k)&&k!=='pushupStyle')$(k).value=String(settings[k]);$('pushupStyle').value=settings.pushupStyle;}
-$('settingsBtn').onclick=()=>{populateSettings();notificationState();$('settingsDialog').showModal();};
+function openSettings(){populateSettings();notificationState();$('settingsDialog').showModal();}
+$('settingsBtn').onclick=openSettings;
+$('editDailyGoals').onclick=()=>{openSettings();$('dailyPushupGoal').focus();$('dailyPushupGoal').scrollIntoView({block:'center'});};
 $('settingsDialog').addEventListener('click',e=>{if(e.target===$('settingsDialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
 for(const k of Object.keys(DEFAULTS))if($(k)&&k!=='pushupStyle')$(k).addEventListener('change',()=>{
   if(!$(k).checkValidity()){$(k).reportValidity();$(k).value=settings[k];return;}
@@ -94,7 +100,7 @@ function showView(next){
   $('backToChoices').hidden=next==='choose'||next==='rest';
   demoStop?.();demoStop=null;
   if(next==='exercise')demoStop=animate($('exerciseDemo'),()=>camOn?null:exercise.kind==='pushups'?{pushup:performance.now()/3000,wall:settings.pushupStyle==='wall'}:MOVES.squat);
-  if(next==='stretch'){$('player').hidden=true;$('routineList').hidden=false;}
+  if(next==='stretch'){$('player').hidden=true;$('routinePicker').hidden=false;renderRoutinePicker();}
 }
 $('backToChoices').onclick=()=>{const saved=settleActivity();showView('choose');if(saved)toast('Movimiento guardado');};
 function renderChoices(){
@@ -183,12 +189,39 @@ function runDetection(generation){
   };tick();
 }
 const rt={r:null,id:null,i:0,left:0,elapsedMs:0,paused:false,timerPaused:false,lastAt:0,ts:0,spoken:false,lastSaved:0};
-const routineTotal=r=>r.steps.reduce((s,[,t])=>s+t,0);
-$('routineList').innerHTML=ROUTINES.map(r=>`<button class="routine" data-id="${r.id}"><span><strong>${esc(r.name)}</strong><small>${esc(r.why)} · ${r.steps.length} pasos</small></span><span class="label">${fmt(routineTotal(r))} ↗</span></button>`).join('');
-$('routineList').onclick=e=>{const b=e.target.closest('[data-id]');if(b)startRoutine(ROUTINES.find(r=>r.id===b.dataset.id));};
+function allRoutines(){return [...customRoutines,...ROUTINES];}
+function renderRoutinePicker(){
+  pendingRoutine=null;$('routineFit').hidden=true;
+  $('routineList').innerHTML=allRoutines().map(r=>{
+    const custom=r.id.startsWith('custom-');
+    return `<div class="routine-item"><button class="routine" data-id="${esc(r.id)}"><span><strong>${esc(r.name)}</strong><small>${custom?'Tu rutina':esc(r.why)} · ${r.steps.length} pasos</small></span><span class="label">${fmt(routineTotal(r))} ↗</span></button><div class="routine-item-actions">${custom?`<button class="sm ghost" data-routine-action="edit" data-routine="${esc(r.id)}" aria-label="Editar ${esc(r.name)}">Editar</button>`:''}<button class="sm ghost" data-routine-action="copy" data-routine="${esc(r.id)}" aria-label="Copiar ${esc(r.name)}">${custom?'Duplicar':'Personalizar copia'}</button>${custom?`<button class="sm ghost" data-routine-action="delete" data-routine="${esc(r.id)}" aria-label="Eliminar ${esc(r.name)}">Eliminar</button>`:''}</div></div>`;
+  }).join('');
+}
+function requestRoutine(r){
+  if(!r)return;
+  if(timer.mode==='break'&&routineTotal(r)>remaining()+1){
+    pendingRoutine=r;$('routineFitMessage').textContent=`${r.name} dura ${fmt(routineTotal(r))} y quedan ${fmt(remaining())} de pausa.`;$('routineFit').hidden=false;$('routineFit').scrollIntoView({block:'nearest'});$('extendRoutineBreak').focus({preventScroll:true});return;
+  }
+  startRoutine(r);
+}
+$('extendRoutineBreak').onclick=()=>{
+  const r=pendingRoutine;if(!r)return;pendingRoutine=null;
+  const duration=routineTotal(r);timer.total=timer.remaining=duration;timer.running=false;startTimer();startRoutine(r);toast(`Pausa ajustada a ${fmt(duration)}`);
+};
+$('fitRoutineRemaining').onclick=()=>{const r=pendingRoutine;if(r){pendingRoutine=null;startRoutine(r);}};
+const routineEditor=initRoutineEditor({store,uid,toast,getRoutines:()=>customRoutines,
+  saveRoutines:routines=>{if(!store.set('ps.routines',routines))return false;customRoutines=routines;return true;},
+  onChange:renderRoutinePicker
+});
+$('createRoutine').onclick=()=>routineEditor.open();
+$('routineList').onclick=e=>{
+  const action=e.target.closest('[data-routine-action]');
+  if(action){const r=allRoutines().find(r=>r.id===action.dataset.routine);if(!r)return;if(action.dataset.routineAction==='delete')routineEditor.remove(r);else routineEditor.open(r,action.dataset.routineAction==='copy');return;}
+  const b=e.target.closest('[data-id]');if(b)requestRoutine(allRoutines().find(r=>r.id===b.dataset.id));
+};
 function routineEntry(partial=true){const seconds=Math.floor(rt.elapsedMs/1000);return rt.r&&seconds>0?{id:rt.id,ts:rt.ts,type:'Estiramiento',detail:rt.r.name,durationSec:seconds,source:'routine',partial}:null;}
 function persistRoutine(){const e=routineEntry();if(e)store.set('ps.routine',e);}
-function startRoutine(r){if(!r)return;stopRoutine();Object.assign(rt,{r,id:uid(),i:0,left:r.steps[0][1],elapsedMs:0,paused:!timer.running,timerPaused:!timer.running,lastAt:Date.now(),ts:Date.now(),spoken:false,lastSaved:0});$('routineList').hidden=true;$('player').hidden=false;stretchDemoStop=animate($('stretchDemo'),()=>rt.r?MOVES[rt.r.steps[rt.i][0]]:null);keepAwake(!rt.paused);speakStep();renderStep();}
+function startRoutine(r){if(!r)return;r={...r,steps:r.steps.map(step=>[...step])};stopRoutine();Object.assign(rt,{r,id:uid(),i:0,left:r.steps[0][1],elapsedMs:0,paused:!timer.running,timerPaused:!timer.running,lastAt:Date.now(),ts:Date.now(),spoken:false,lastSaved:0});$('routineFit').hidden=true;$('routinePicker').hidden=true;$('player').hidden=false;stretchDemoStop=animate($('stretchDemo'),()=>rt.r?MOVES[rt.r.steps[rt.i][0]]:null);keepAwake(!rt.paused);speakStep();renderStep();}
 function speakStep(){const m=MOVES[rt.r.steps[rt.i][0]];if(!rt.paused){beep(740,100,1);say(`${m.name}. ${m.cue}`);}}
 function tickRoutine(now=Date.now()){
   if(!rt.r)return;
@@ -215,6 +248,7 @@ let renderedDay='';
 function renderStats(){
   renderedDay=dayKey();const s=summarize(log);$('todayDate').textContent=new Date().toLocaleDateString('es',{day:'numeric',month:'short'});$('sToday').textContent=s.squats;$('sGoal').textContent=settings.dailyGoal;$('sPushups').textContent=s.pushups;$('sStretch').textContent=s.stretchSec>0&&s.stretchSec<60?'<1':Math.floor(s.stretchSec/60);$('sStretch').title=`${s.stretchSec} segundos activos`;$('sStreak').textContent=s.streak;
   $('goalBar').style.width=`${Math.min(100,s.squats/settings.dailyGoal*100)}%`;$('goalProgress').setAttribute('aria-valuemax',settings.dailyGoal);$('goalProgress').setAttribute('aria-valuenow',Math.min(s.squats,settings.dailyGoal));$('goalProgress').setAttribute('aria-valuetext',`${s.squats} de ${settings.dailyGoal} sentadillas`);
+  $('sPushupGoal').textContent=settings.dailyPushupGoal;$('pushupGoalBar').style.width=`${Math.min(100,s.pushups/settings.dailyPushupGoal*100)}%`;$('pushupGoalProgress').setAttribute('aria-valuemax',settings.dailyPushupGoal);$('pushupGoalProgress').setAttribute('aria-valuenow',Math.min(s.pushups,settings.dailyPushupGoal));$('pushupGoalProgress').setAttribute('aria-valuetext',`${s.pushups} de ${settings.dailyPushupGoal} flexiones`);$('pushupGoalMessage').textContent=s.pushups>=settings.dailyPushupGoal?'Meta de flexiones cumplida. ¡Buen trabajo!':s.pushups?`Te quedan ${settings.dailyPushupGoal-s.pushups} para tu meta.`:'Cada flexión suma.';
   $('goalMessage').textContent=s.squats>=settings.dailyGoal?'Meta de hoy cumplida. Disfruta de tu ritmo.':s.squats?`Te quedan ${settings.dailyGoal-s.squats} para tu meta.`:'Cada pausa suma.';
   const max=Math.max(1,...s.week.map(w=>w.reps));$('chart').innerHTML=s.week.map((w,i)=>`<div class="col-b" title="${esc(new Date(w.ts).toLocaleDateString('es'))}: ${w.reps} repeticiones"><em>${w.reps||''}</em><div class="b ${i===6?'today':''}" style="height:${w.reps/max*75}px"></div><small>${i===6?'Hoy':esc(new Date(w.ts).toLocaleDateString('es',{weekday:'narrow'}))}</small></div>`).join('');$('chart').setAttribute('aria-label',s.week.map(w=>`${new Date(w.ts).toLocaleDateString('es',{weekday:'long',day:'numeric'})}: ${w.reps} repeticiones`).join(', '));
 }
@@ -243,15 +277,15 @@ $('manualForm').onsubmit=e=>{e.preventDefault();if(!$('manualForm').reportValidi
 $('clearExamples').onclick=()=>{log=log.filter(e=>!e.example);saveLog();toast('Ejemplos eliminados');};
 $('exportBtn').onclick=()=>{
   persistExercise();persistRoutine();const backupLog=[...log];for(const draft of [exerciseEntry(),routineEntry()])if(draft){const i=backupLog.findIndex(e=>e.id===draft.id);if(i>=0)backupLog[i]=draft;else backupLog.push(draft);}
-  const data={app:'pomodoro-squats',version:2,exported:new Date().toISOString(),settings,pomos,focusMinutes,log:backupLog};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download=`pomodoro-squats-${dayKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);$('backupStatus').textContent='Respaldo exportado con tu historial y el movimiento pendiente.';
+  const data={app:'pomodoro-squats',version:3,routines:customRoutines,exported:new Date().toISOString(),settings,pomos,focusMinutes,log:backupLog};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download=`pomodoro-squats-${dayKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);$('backupStatus').textContent='Respaldo exportado con tu historial y el movimiento pendiente.';
 };
 $('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=async()=>{
   const file=$('importFile').files[0];if(!file)return;
-  try{if(file.size>10*1024*1024)throw Error('too-large');const d=parseBackup(JSON.parse(await file.text()));const ids=new Set(log.map(e=>e.id)),fresh=d.log.filter(e=>!ids.has(e.id));log=cleanLog([...log,...fresh]);for(const [k,v] of Object.entries(d.pomos))pomos[k]=Math.max(pomos[k]||0,v);for(const [k,v] of Object.entries(d.focusMinutes))focusMinutes[k]=Math.max(focusMinutes[k]||0,v);store.set('ps.pomos',pomos);store.set('ps.focusMinutes',focusMinutes);saveLog();renderTimer();$('backupStatus').textContent=`Importados ${fresh.length} registros nuevos. Tus ajustes se conservan.`;toast(`Importados ${fresh.length} registros`);}catch{$('backupStatus').textContent='No se importó ningún dato. El archivo debe ser un respaldo válido de Pomodoro Squats, de hasta 10 MB.';toast('No se pudo importar. Revisa el archivo.');}finally{$('importFile').value='';}
+  try{if(file.size>10*1024*1024)throw Error('too-large');const d=parseBackup(JSON.parse(await file.text()));const ids=new Set(log.map(e=>e.id)),fresh=d.log.filter(e=>!ids.has(e.id));const routineIds=new Set(customRoutines.map(r=>r.id)),newRoutines=d.routines.filter(r=>!routineIds.has(r.id));if(customRoutines.length+newRoutines.length>ROUTINE_LIMIT)throw Error('too-many-routines');if(newRoutines.length){if(!store.set('ps.routines',[...customRoutines,...newRoutines]))throw Error('storage');customRoutines.push(...newRoutines);renderRoutinePicker();}log=cleanLog([...log,...fresh]);for(const [k,v] of Object.entries(d.pomos))pomos[k]=Math.max(pomos[k]||0,v);for(const [k,v] of Object.entries(d.focusMinutes))focusMinutes[k]=Math.max(focusMinutes[k]||0,v);store.set('ps.pomos',pomos);store.set('ps.focusMinutes',focusMinutes);saveLog();renderTimer();$('backupStatus').textContent=`Importados ${fresh.length} registros y ${newRoutines.length} rutinas nuevas. Tus ajustes y metas se conservan.`;toast(`Importados ${fresh.length} registros y ${newRoutines.length} rutinas`);}catch{$('backupStatus').textContent='No se importó ningún dato. El archivo debe ser un respaldo válido de Pomodoro Squats, de hasta 10 MB.';toast('No se pudo importar. Revisa el archivo.');}finally{$('importFile').value='';}
 };
 document.addEventListener('keydown',e=>{
-  if(e.repeat||e.target.closest?.('input,select,textarea,button,a,summary,[contenteditable="true"]')||e.metaKey||e.ctrlKey||e.altKey||$('settingsDialog').open)return;
+  if(e.repeat||e.target.closest?.('input,select,textarea,button,a,summary,[contenteditable="true"]')||e.metaKey||e.ctrlKey||e.altKey||$('settingsDialog').open||$('routineEditor').open||$('helpDialog').open)return;
   if(e.code==='Space'){e.preventDefault();$('startBtn').click();}
   else if(e.key.toLowerCase()==='b'){$('breakNowBtn').click();}
   else if(view==='exercise'&&['+','=','ArrowUp'].includes(e.key)){e.preventDefault();addRep();}
@@ -269,7 +303,7 @@ for(const key of ['ps.exercise','ps.routine']){
 }
 if(recovered){$('recoveryNote').textContent='Hemos recuperado el movimiento pendiente de tu última sesión.';$('recoveryNote').hidden=false;}
 
-applyTheme();populateSettings();renderChoices();renderTimer();renderReps();renderStats();renderHistory();showView('choose');
+renderRoutinePicker();applyTheme();populateSettings();renderChoices();renderTimer();renderReps();renderStats();renderHistory();showView('choose');
 if(timer.mode==='break')$('chooseHint').textContent='Tu pausa sigue en marcha. Elige cómo quieres moverte.';
 setInterval(()=>{updateTimer();tickRoutine();},250);
 initCompanion({store,toast,

@@ -1,10 +1,10 @@
-# Pomodoro Squats · Beta 0.3.0
+# Pomodoro Squats · Beta 0.4.0
 
 Bloques de foco y pausas con movimiento: sentadillas, flexiones y estiramientos guiados. Sin cuenta; el historial se guarda en este navegador. El vídeo se procesa en el dispositivo.
 
 Versión pública, también para móvil: https://eduardosalomonm.github.io/pomodoro-squats/
 
-El botón Compartir abre el menú del móvil o copia ese enlace, sin incluir tu tarea ni tu actividad. `localhost` solo abre la app en el dispositivo donde corre el servidor y no sirve para enviarla a amigos. La beta es pública; no requiere cuenta. Los comentarios de prueba se pueden dejar en GitHub desde Ayuda y privacidad.
+El botón Compartir abre el menú del móvil o copia ese enlace, sin incluir tu tarea ni tu actividad. `localhost` solo abre la app en el dispositivo donde corre el servidor y no sirve para enviarla a amigos. La beta es pública; no requiere cuenta. Los comentarios de prueba se pueden dejar en GitHub desde Ayuda y privacidad. Si ya tenías la app abierta, usa «Guardar y actualizar» cuando aparezca la nueva versión.
 
 ## Abrir en local
 
@@ -25,6 +25,14 @@ Abre http://localhost:5180. Usa siempre la misma dirección y puerto: cada direc
 
 Esta beta incluye iconos PNG para Android y un icono específico para la pantalla de inicio de iPhone. La vista de ejercicio compacta el temporizador en móvil. Incluye una imagen de presentación al compartir el enlace y evita indexación en buscadores mientras siga en beta.
 
+## Nuevo en la beta 0.4.0
+
+- Meta diaria de flexiones independiente de la meta de sentadillas y de las repeticiones por pausa. Se ajusta en Ajustes o desde «Editar metas diarias». El valor inicial es 30; los ajustes y el historial anteriores se conservan.
+- Rutinas personalizadas desde Estiramientos: crear, copiar una propuesta, editar, ordenar con botones, eliminar y deshacer. Catálogo de los movimientos guiados existentes; cada paso dura entre 5 y 300 segundos, con hasta 12 pasos, 30 minutos y 50 rutinas guardadas.
+- Borrador local automático mientras editas. Cerrar el editor conserva el borrador y «Continuar borrador» lo recupera incluso tras recargar. «Guardar rutina» actualiza la rutina disponible; «Descartar borrador» elimina solo los cambios pendientes. Los borradores sin guardar no se exportan.
+- Si una rutina dura más que la pausa restante, puedes ampliar la pausa o usar solo el tiempo restante. La segunda opción guarda una entrada parcial y acredita solo los segundos activos.
+- Respaldos de versión 3 con rutinas guardadas. Se siguen aceptando las versiones 1 y 2. Al importar se combinan identificadores nuevos sin duplicados; las rutinas con un ID existente, los ajustes y las metas actuales se conservan. Las entradas inválidas se rechazan antes de combinar los datos.
+
 ## Qué incluye
 
 - Foco y pausa configurables, tarea de foco opcional y resumen de bloques y minutos completados hoy. Los minutos se empiezan a registrar con esta versión; no se estiman los bloques antiguos.
@@ -34,7 +42,7 @@ Esta beta incluye iconos PNG para Android y un icono específico para la pantall
 - Detección por ángulo de rodilla o codo, compensando la proporción del vídeo. Requiere extensión inicial y un ciclo estable de bajada y subida. Si pierde visibilidad, reinicia el ciclo para reducir falsos positivos.
 - Tres rutinas de estiramiento con demostración, voz, pasos y control de pausa. Se registra solo el tiempo activo; saltar pasos no acredita su duración completa. Al salir de la pestaña la rutina se pausa y la cámara se apaga.
 - Guardado del ejercicio al cambiar de actividad, terminar o reiniciar el descanso. Los borradores se recuperan tras recargar sin duplicar entradas. Las rutinas interrumpidas se guardan como parciales.
-- Estadísticas por día local: sentadillas, flexiones, minutos estirando, racha y gráfica de siete días. Los ejemplos antiguos no contribuyen al progreso. La plancha se registra en segundos y no se mezcla con las repeticiones.
+- Estadísticas por día local: sentadillas y flexiones con sus metas y barras independientes, minutos estirando, racha y gráfica de siete días. Los ejemplos antiguos no contribuyen al progreso. La plancha se registra en segundos y no se mezcla con las repeticiones.
 - Historial editable, borrado con opción de deshacer, anotación manual y respaldo JSON. La importación valida todo el archivo antes de combinarlo; conserva los ajustes actuales y admite respaldos originales de versión 1.
 - Interfaz adaptable, temas claro / oscuro / sistema, navegación por teclado, etiquetas accesibles y preferencia de movimiento reducido.
 - Sonido y voz independientes; notificaciones con permiso explícito. `Espacio` inicia o pausa el temporizador, `B` abre una pausa y `+` / `−` ajustan repeticiones. Los atajos globales no interfieren al escribir o usar botones.
@@ -66,11 +74,11 @@ Con el servidor local abierto en otro terminal:
 APP_URL=http://localhost:5180 npm run test:browser
 ```
 
-Las pruebas móviles usan Chromium con perfil Android y WebKit con perfil iPhone; no sustituyen pruebas en teléfonos físicos. Las pruebas cubren bienvenida, pausa de un minuto, compartir nativo y copia alternativa sin datos personales, arranque fallido, actualización con progreso pendiente, instalación y rutas bajo `/pomodoro-squats/`, además de fechas locales y cambio de hora, exclusión de ejemplos, importación, ciclos de detección, recuperación de borradores, pausas, fin de bloques, importación sin HTML ejecutable, atajos, tamaños de 320 a 1440 px, modo oscuro, uso sin conexión y cámara con poses sintéticas. Las capturas se guardan en la carpeta temporal del sistema (`OUTPUT_DIR` permite elegir otra).
+Las pruebas de rutinas cubren orden, reproducción, borradores tras recarga, eliminación con deshacer, duración mayor que la pausa, respaldo y restauración sin duplicados, campos inválidos y metas de flexiones al cambiar de día. Las pruebas móviles usan Chromium con perfil Android y WebKit con perfil iPhone; no sustituyen pruebas en teléfonos físicos. Las pruebas cubren bienvenida, pausa de un minuto, compartir nativo y copia alternativa sin datos personales, arranque fallido, actualización con progreso pendiente, instalación y rutas bajo `/pomodoro-squats/`, además de fechas locales y cambio de hora, exclusión de ejemplos, importación, ciclos de detección, recuperación de borradores, pausas, fin de bloques, importación sin HTML ejecutable, atajos, tamaños de 320 a 1440 px, modo oscuro, uso sin conexión y cámara con poses sintéticas. Las capturas se guardan en la carpeta temporal del sistema (`OUTPUT_DIR` permite elegir otra).
 
 ## Archivos
 
-`index.html` y `styles.css` definen la interfaz; `app.js`, los flujos y dispositivos; `core.js`, validación, fechas y detección; `figure.js` y `routines.js`, demostraciones y rutinas. `boot.js` protege el arranque; `companion.js` contiene bienvenida, compartir, instalación, ayuda y actualización; `release.js` identifica la versión. `sw.js` conserva un paquete completo por versión para abrir sin conexión.
+`index.html` y `styles.css` definen la interfaz; `app.js`, los flujos y dispositivos; `core.js`, validación, fechas y detección; `routine-model.js` y `routine-editor.js`, validación y edición de rutinas; `figure.js` y `routines.js`, demostraciones y rutinas. `boot.js` protege el arranque; `companion.js` contiene bienvenida, compartir, instalación, ayuda y actualización; `release.js` identifica la versión. `sw.js` conserva un paquete completo por versión para abrir sin conexión.
 
 ## Dirección visual
 
@@ -85,7 +93,7 @@ Para cada versión nueva, cambiar `VERSION` en `release.js`, `CACHE` en `sw.js` 
 ## Próximos pasos
 
 1. Calibrar la detección con uso real y distintos encuadres.
-2. Rutinas de estiramiento editables.
+2. Calibrar la experiencia del editor con pruebas en teléfonos físicos.
 3. Horario de trabajo y recordatorios con la app cerrada.
 4. Otros movimientos con cámara, a partir de lo aprendido con sentadillas y flexiones.
 

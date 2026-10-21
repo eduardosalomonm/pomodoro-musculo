@@ -1,6 +1,6 @@
 // A complete shell is cached before activation, so one release never mixes with another.
-const CACHE = 'pomodoro-squats-v0.3.0';
-const SHELL = ['./','index.html','styles.css','boot.js','app.js','companion.js','release.js','core.js','figure.js','routines.js','manifest.webmanifest','icon.svg','icons/apple-touch-icon.png','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png'];
+const CACHE = 'pomodoro-squats-v0.4.0';
+const SHELL = ['./','index.html','styles.css','boot.js','app.js','companion.js','release.js','core.js','figure.js','routines.js','routine-model.js','routine-editor.js','manifest.webmanifest','icon.svg','icons/apple-touch-icon.png','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png'];
 const shellURLs = new Set(SHELL.map(path => new URL(path, self.registration.scope).href));
 self.addEventListener('install', event => event.waitUntil(
   caches.open(CACHE).then(cache => cache.addAll(SHELL.map(path => new Request(path, {cache:'reload'}))))

@@ -1,5 +1,6 @@
-export const DEFAULTS = {focusMin:25, breakMin:5, targetReps:15, pushupTarget:8, dailyGoal:100, depth:105, autoFocus:0, voice:1, sound:1, pushupStyle:'floor', theme:'system', preferredExercise:'squats'};
-const limits = {focusMin:[1,120], breakMin:[1,30], targetReps:[1,200], pushupTarget:[1,200], dailyGoal:[5,1000], autoFocus:[0,1], voice:[0,1], sound:[0,1]};
+import {cleanRoutines} from './routine-model.js';
+export const DEFAULTS = {focusMin:25, breakMin:5, targetReps:15, pushupTarget:8, dailyGoal:100, dailyPushupGoal:30, depth:105, autoFocus:0, voice:1, sound:1, pushupStyle:'floor', theme:'system', preferredExercise:'squats'};
+const limits = {focusMin:[1,120], breakMin:[1,30], targetReps:[1,200], pushupTarget:[1,200], dailyGoal:[5,1000], dailyPushupGoal:[1,1000], autoFocus:[0,1], voice:[0,1], sound:[0,1]};
 export function normalizeSettings(value={}) {
   const out={...DEFAULTS};
   if (!value || typeof value!=='object') return out;
@@ -47,10 +48,10 @@ export function cleanDaily(value) {
   return out;
 }
 export function parseBackup(value) {
-  if (!value || value.app!=='pomodoro-squats' || ![1,2].includes(value.version) || !Array.isArray(value.log) || value.log.length>100000) throw Error('invalid-backup');
+  if (!value || value.app!=='pomodoro-squats' || ![1,2,3].includes(value.version) || !Array.isArray(value.log) || value.log.length>100000) throw Error('invalid-backup');
   const log=cleanLog(value.log);
   if (log.length!==value.log.length) throw Error('invalid-entries');
-  return {log,pomos:cleanDaily(value.pomos),focusMinutes:cleanDaily(value.focusMinutes)};
+  return {log,pomos:cleanDaily(value.pomos),focusMinutes:cleanDaily(value.focusMinutes),routines:value.version===3?cleanRoutines(value.routines??[],true):[]};
 }
 export function summarize(log, now=Date.now()) {
   const real=log.filter(e=>!e.example), today=dayKey(now), entries=real.filter(e=>dayKey(e.ts)===today);
