@@ -62,24 +62,4 @@ export function summarize(log, now=Date.now()) {
   const week=Array.from({length:7},(_,i)=>{const ts=dayOffset(now,i-6),k=dayKey(ts); return {key:k,ts,reps:real.filter(e=>dayKey(e.ts)===k).reduce((s,e)=>s+(e.reps||0),0)};});
   return {squats:sum('Sentadillas'),pushups:sum('Flexiones'),stretchSec:entries.filter(e=>e.type==='Estiramiento').reduce((s,e)=>s+e.durationSec,0),streak,week};
 }
-export function jointAngle(a,b,c,width=1,height=1) {
-  const ab=[(a.x-b.x)*width,(a.y-b.y)*height], cb=[(c.x-b.x)*width,(c.y-b.y)*height];
-  return Math.acos(Math.max(-1,Math.min(1,(ab[0]*cb[0]+ab[1]*cb[1])/(Math.hypot(...ab)*Math.hypot(...cb)||1))))*180/Math.PI;
-}
-// Require a visible, stable standing/extended position before a full cycle.
-export class RepTracker {
-  constructor(depth=105) { this.depth=depth; this.reset(); }
-  reset() { this.phase='ready'; this.smooth=null; this.since=0; this.candidate=''; }
-  update(angle,ts) {
-    if (!Number.isFinite(angle)) { this.reset(); return false; }
-    this.smooth=this.smooth==null?angle:this.smooth*.6+angle*.4;
-    const candidate=this.smooth>155?'up':this.smooth<this.depth?'down':'';
-    if (!candidate) { this.candidate=''; return false; }
-    if (candidate!==this.candidate) { this.candidate=candidate; this.since=ts; return false; }
-    if (ts-this.since<180) return false;
-    if (this.phase==='ready' && candidate==='up') this.phase='up';
-    else if (this.phase==='up' && candidate==='down') this.phase='down';
-    else if (this.phase==='down' && candidate==='up') { this.phase='up'; return true; }
-    return false;
-  }
-}
+export {jointAngle,RepTracker} from './pose-counter.js';

@@ -1,3 +1,4 @@
+import {poseFixture} from './pose-fixtures.mjs';
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
 const {chromium}=createRequire(import.meta.url)('playwright');
@@ -35,13 +36,7 @@ try {
   await cp.waitForFunction(()=>window.mockStream.getTracks().every(t=>t.readyState==='ended'));
   assert.equal(await cp.locator('#video').isVisible(),false);
   await cp.locator('#pickSquats').click();await cp.locator('#camBtn').click();await cp.waitForFunction(()=>document.getElementById('camBtn').textContent==='Apagar cámara');
-  const pose=async(angle,push=false)=>cp.evaluate(({angle,push})=>{
-    const rad=angle*Math.PI/180;
-    const lm=Array.from({length:33},()=>({x:.5,y:.5,visibility:1}));
-    const ids=push?[[11,13,15,23],[12,14,16,24]]:[[23,25,27],[24,26,28]];
-    ids.forEach(([a,b,c,hip],i)=>{const x=.4+i*.15;lm[a]={x:x+Math.sin(rad)*.15,y:.5+Math.cos(rad)*.2,visibility:1};lm[b]={x,y:.5,visibility:1};lm[c]={x,y:.7,visibility:1};if(push)lm[hip]={x:lm[a].x,y:lm[a].y+.3,visibility:1};});
-    window.syntheticPose=lm;
-  },{angle,push});
+  const pose=async(angle,push=false)=>cp.evaluate(lm=>{window.syntheticPose=lm;},poseFixture(angle,push?'pushups-wall':'squats'));
   await pose(175);await cp.waitForTimeout(450);await pose(80);await cp.waitForTimeout(700);await pose(175);await cp.waitForFunction(()=>document.getElementById('repCount').textContent==='1');
   await cp.locator('#saveExercise').click();let logs=await cp.evaluate(()=>JSON.parse(localStorage.getItem('ps.log')));assert.equal(logs[0].source,'camera');assert.equal(logs[0].reps,1);
   await cp.locator('#restFocus').click();await cp.locator('#pickPushups').click();await cp.locator('#pushupStyle').selectOption('wall');await cp.locator('#camBtn').click();await cp.waitForFunction(()=>document.getElementById('camBtn').textContent==='Apagar cámara');

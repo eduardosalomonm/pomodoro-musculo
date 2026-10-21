@@ -3,11 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/core.test.mjs tests/routines.test.mjs",
-    "test:browser": "node tests/browser.mjs && node tests/offline-camera.mjs && node tests/mobile-share.mjs && node tests/custom-routines.mjs && node tests/update.mjs"
+    "test": "node --test tests/core.test.mjs tests/routines.test.mjs tests/calibration.test.mjs",
+    "test:browser": "node tests/browser.mjs && node tests/offline-camera.mjs && node tests/mobile-share.mjs && node tests/custom-routines.mjs && node tests/camera-calibration.mjs && node tests/update.mjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"
   },
-  "version": "0.4.0"
+  "version": "0.5.0"
 }
