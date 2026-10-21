@@ -45,3 +45,5 @@ test('camera or zoom changes isolate calibration while old profiles still load',
   assert.equal(compatibleProfile(p,{...context,lens}),true);assert.equal(compatibleProfile(p,{...context,lens:cameraSignature({getSettings:()=>({deviceId:'back',zoom:2})})}),false);assert.equal(compatibleProfile(p,{...context,lens:cameraSignature({getSettings:()=>({deviceId:'ultra',zoom:1})})}),false);
   const old=makeProfile(170,100,context,123);assert.equal(Object.keys(cleanProfiles({old,p})).length,2);assert.equal(compatibleProfile(old,{...context,lens}),false);
 });
+
+test('zoom adjustments retain capture size and frame-rate limits',async()=>{let applied;const capture={width:{ideal:640},height:{ideal:480},frameRate:{ideal:15,max:24}};assert.equal(await minimizeZoom({getCapabilities:()=>({zoom:{min:1,max:5}}),getConstraints:()=>capture,applyConstraints:async c=>{applied=c;},getSettings:()=>({zoom:1})}),true);for(const key of Object.keys(capture))assert.deepEqual(applied[key],capture[key]);});

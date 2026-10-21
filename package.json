@@ -9,5 +9,5 @@
   "devDependencies": {
     "playwright": "1.62.1"
   },
-  "version": "0.6.0"
+  "version": "0.6.1"
 }

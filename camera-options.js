@@ -12,7 +12,9 @@ export async function minimizeZoom(track){
   try{
     const range=track?.getCapabilities?.().zoom;
     if(!Number.isFinite(range?.min)||range.min<=0||!Number.isFinite(range.max)||range.max<range.min||!track.applyConstraints)return false;
-    await track.applyConstraints({advanced:[{zoom:range.min}]});
+    // Keep the requested resolution and frame rate when changing the zoom.
+    const constraints=track.getConstraints?.()||{};
+    await track.applyConstraints({...constraints,zoom:{ideal:range.min},advanced:[{zoom:range.min}]});
     const actual=track.getSettings?.().zoom;
     return Number.isFinite(actual)&&Math.abs(actual-range.min)<.001;
   }catch{return false;}

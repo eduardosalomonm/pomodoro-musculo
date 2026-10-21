@@ -1,4 +1,4 @@
-# Pomodoro Squats · Beta 0.6.0
+# Pomodoro Squats · Beta 0.6.1
 
 Bloques de foco y pausas con movimiento: sentadillas, flexiones y estiramientos guiados. Sin cuenta; el historial se guarda en este navegador. El vídeo se procesa en el dispositivo.
 
@@ -25,7 +25,7 @@ Abre http://localhost:5180. Usa siempre la misma dirección y puerto: cada direc
 
 Esta beta incluye iconos PNG para Android y un icono específico para la pantalla de inicio de iPhone. La vista de ejercicio compacta el temporizador en móvil. Incluye una imagen de presentación al compartir el enlace y evita indexación en buscadores mientras siga en beta.
 
-## Nuevo en la beta 0.6.0
+## Nuevo en la beta 0.6.1
 
 - Encuadre amplio con la cámara trasera: búsqueda de ultra gran angular y zoom mínimo verificado, con alternativa manual entre las cámaras que exponga el navegador.
 - Mensajes que distinguen lente identificada, zoom mínimo y falta de acceso al encuadre amplio. No se confunden los valores de zoom del navegador con la etiqueta 0,5 de la app Cámara del iPhone.
