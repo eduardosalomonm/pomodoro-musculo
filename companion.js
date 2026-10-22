@@ -18,7 +18,7 @@ export function initCompanion({store, toast, startTrial, beforeUpdate, hasSessio
     if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) e.target.close();
   });
   $('helpDialog').addEventListener('close', () => { $('shareFallback').hidden = true; });
-  $('feedbackLink').href = `${ISSUES_URL}?title=${encodeURIComponent('Prueba de Pomodoro Squats')}&body=${encodeURIComponent(`Versión: ${VERSION}\nDispositivo y navegador (escríbelo aquí):\n\n¿Qué estabas intentando hacer?\n\n¿Qué ocurrió?\n\n¿Qué mejorarías?\n\nNo incluyas datos personales ni respaldos del historial.`)}`;
+  $('feedbackLink').href = `${ISSUES_URL}?title=${encodeURIComponent('Prueba de Pomodoro Músculo')}&body=${encodeURIComponent(`Versión: ${VERSION}\nDispositivo y navegador (escríbelo aquí):\n\n¿Qué estabas intentando hacer?\n\n¿Qué ocurrió?\n\n¿Qué mejorarías?\n\nNo incluyas datos personales ni respaldos del historial.`)}`;
 
   const copyLink = async () => {
     try {
@@ -34,7 +34,7 @@ export function initCompanion({store, toast, startTrial, beforeUpdate, hasSessio
   $('copyLinkBtn').onclick = copyLink;
   $('shareBtn').onclick = async () => {
     if (navigator.share) {
-      try { await navigator.share({title:'Pomodoro Squats', text:'Prueba una pausa con movimiento: sentadillas, flexiones y estiramientos.', url:PUBLIC_URL}); return; }
+      try { await navigator.share({title:'Pomodoro Músculo', text:'Prueba una pausa con movimiento: sentadillas, flexiones y estiramientos.', url:PUBLIC_URL}); return; }
       catch (e) { if (e.name === 'AbortError') return; }
     }
     await copyLink();

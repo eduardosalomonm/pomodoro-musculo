@@ -1,4 +1,4 @@
-# Pomodoro Squats · Beta 0.7.0
+# Pomodoro Músculo · Beta 0.7.1
 
 Bloques de foco y pausas con movimiento: sentadillas, flexiones y estiramientos guiados. Sin cuenta; el historial se guarda en este navegador. El vídeo se procesa en el dispositivo.
 
@@ -24,6 +24,10 @@ Abre http://localhost:5180. Usa siempre la misma dirección y puerto: cada direc
 4. En Ayuda y privacidad están las instrucciones de instalación y el enlace para reportar problemas. Los comentarios de GitHub son públicos y requieren cuenta; no adjuntar respaldos personales.
 
 Esta beta incluye iconos PNG para Android y un icono específico para la pantalla de inicio de iPhone. La vista dedicada de ejercicio reúne cámara, contador, pausa y guardado en móvil. Incluye una imagen de presentación al compartir el enlace y evita indexación en buscadores mientras siga en beta.
+
+## Nuevo en la beta 0.7.1
+
+La app pasa a llamarse **Pomodoro Músculo** en la interfaz, la instalación móvil y las vistas previas al compartir. Se conserva la dirección pública y la compatibilidad con el historial, respaldos y versiones anteriores.
 
 ## Nuevo en la beta 0.7.0
 
