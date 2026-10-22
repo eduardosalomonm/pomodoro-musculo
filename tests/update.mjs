@@ -4,7 +4,7 @@ import {VERSION} from '../release.js';
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
 const {chromium}=createRequire(import.meta.url)('playwright');
-const root=new URL('../',import.meta.url),prefix='/pomodoro-squats/';
+const root=new URL('../',import.meta.url),prefix='/pomodoro-musculo/';
 let version=VERSION;
 const nextVersion=`${VERSION}-update-test`;
 const server=createServer(async(req,res)=>{

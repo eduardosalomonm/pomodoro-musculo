@@ -1,1 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#d9573b"/><circle cx="256" cy="276" r="150" fill="none" stroke="#fff" stroke-width="36"/><path d="M256 276V176M256 276l70 40" stroke="#fff" stroke-width="36" stroke-linecap="round"/><path d="M216 92h80" stroke="#fff" stroke-width="36" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Pomodoro Músculo · un bíceps con una sonrisa</title>
+  <rect width="512" height="512" rx="112" fill="#b94029"/>
+  <g stroke="#26372e" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M143 370C99 346 98 303 116 260L156 164C136 150 136 121 155 110L198 88C217 78 236 88 240 107L247 140C251 159 238 175 218 178L195 254C224 226 263 222 292 241C309 211 348 208 375 233C405 261 402 309 382 341C356 382 313 402 252 402H190C169 402 153 391 143 370Z" fill="#fff0d5"/>
+    <path d="M159 164L187 174M185 116L195 141M213 107L222 132M195 254L177 293M292 241L305 258" fill="none"/>
+    <circle cx="270" cy="295" r="5" fill="#26372e" stroke="none"/>
+    <path d="M311 294L322 289M273 326Q298 348 323 320" fill="none" stroke-width="11"/>
+  </g>
+  <path d="M393 115Q421 145 408 159Q391 171 381 154Q373 141 393 115Z" fill="#b8cfbd"/>
+  <g stroke="#fff0d5" stroke-width="12" stroke-linecap="round"><path d="M82 187L65 173M101 148L91 127"/></g>
+</svg>

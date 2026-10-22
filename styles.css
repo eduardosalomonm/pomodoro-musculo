@@ -149,3 +149,6 @@ body{padding-block:26px 24px}.wrap{max-width:1200px;gap:28px}header{align-items:
  .is-exercise .exercise-toolbar{grid-area:toolbar}.is-exercise #vExercise>.section-head{grid-area:title}.is-exercise .exercise-tracking{grid-area:tracking}.is-exercise .rep-panel{grid-area:reps}.is-exercise #repProgress{grid-area:progress}.is-exercise .exercise-actions{grid-area:actions}
  .is-exercise:not(.is-calibrating) .stage{grid-area:stage;align-self:stretch;height:100%;min-height:240px}.is-exercise .exercise-tracking button{min-height:36px}.is-exercise #breakCard{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
 }
+
+/* A smiling flexed arm, shared by the header and installed app. */
+.brand-mark{width:44px;height:44px;flex:none;background:none;border-radius:12px;object-fit:contain}

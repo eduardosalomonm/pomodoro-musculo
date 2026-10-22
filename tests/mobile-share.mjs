@@ -25,7 +25,7 @@ for(const [engine,device,name] of [[chromium,devices['Pixel 7'],'android'],[webk
     await page.clock.fastForward(61000);assert.equal(await page.locator('#focusCount').innerText(),'0 bloques hoy');await page.locator('#resetBtn').click();
     await page.locator('#focusTask').fill('PRIVATE TASK NEVER SHARED');
     await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async payload=>{window.shared=payload;}}));
-    await page.locator('#shareBtn').click();const shared=await page.evaluate(()=>window.shared);assert.equal(shared.url,'https://eduardosalomonm.github.io/pomodoro-squats/');assert.equal(JSON.stringify(shared).includes('PRIVATE TASK'),false);
+    await page.locator('#shareBtn').click();const shared=await page.evaluate(()=>window.shared);assert.equal(shared.url,'https://eduardosalomonm.github.io/pomodoro-musculo/');assert.equal(JSON.stringify(shared).includes('PRIVATE TASK'),false);
     await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async()=>{throw new DOMException('cancelled','AbortError');}}));await page.locator('#shareBtn').click();assert.equal(await page.locator('#helpDialog').isVisible(),false);
     await page.evaluate(()=>{Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copiedLink=text;}}});});
     await page.locator('#shareBtn').click();assert.equal(await page.evaluate(()=>window.copiedLink),shared.url);

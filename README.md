@@ -1,8 +1,8 @@
-# Pomodoro Músculo · Beta 0.7.1
+# Pomodoro Músculo · Beta 0.7.2
 
 Bloques de foco y pausas con movimiento: sentadillas, flexiones y estiramientos guiados. Sin cuenta; el historial se guarda en este navegador. El vídeo se procesa en el dispositivo.
 
-Versión pública, también para móvil: https://eduardosalomonm.github.io/pomodoro-squats/
+Versión pública, también para móvil: https://eduardosalomonm.github.io/pomodoro-musculo/
 
 El botón Compartir abre el menú del móvil o copia ese enlace, sin incluir tu tarea ni tu actividad. `localhost` solo abre la app en el dispositivo donde corre el servidor y no sirve para enviarla a amigos. La beta es pública; no requiere cuenta. Los comentarios de prueba se pueden dejar en GitHub desde Ayuda y privacidad. Si ya tenías la app abierta, usa «Guardar y actualizar» cuando aparezca la nueva versión.
 
@@ -24,6 +24,12 @@ Abre http://localhost:5180. Usa siempre la misma dirección y puerto: cada direc
 4. En Ayuda y privacidad están las instrucciones de instalación y el enlace para reportar problemas. Los comentarios de GitHub son públicos y requieren cuenta; no adjuntar respaldos personales.
 
 Esta beta incluye iconos PNG para Android y un icono específico para la pantalla de inicio de iPhone. La vista dedicada de ejercicio reúne cámara, contador, pausa y guardado en móvil. Incluye una imagen de presentación al compartir el enlace y evita indexación en buscadores mientras siga en beta.
+
+## Nuevo en la beta 0.7.2
+
+- Dirección principal: `/pomodoro-musculo/`. El enlace `/pomodoro-squats/` lleva al nuevo, conservando parámetros y anclas. Ambos pertenecen al mismo dominio: se mantienen el historial, los ajustes y los borradores del navegador, junto con la protección de una sola pestaña activa.
+- Logo vectorial propio: un brazo flexionado que guiña un ojo. Se usa en la cabecera, favicon, iconos de instalación y vista previa al compartir.
+- Cachés independientes por ruta para que una instalación antigua no borre los archivos de la nueva. La versión antigua instalada puede seguir funcionando sin conexión; al abrirla con conexión se dirige al nuevo enlace después de actualizar.
 
 ## Nuevo en la beta 0.7.1
 
@@ -123,11 +129,11 @@ Con el servidor local abierto en otro terminal:
 APP_URL=http://localhost:5180 npm run test:browser
 ```
 
-Las pruebas de seguridad de datos reproducen dos pestañas, fallos de escritura, exportación de actividad pendiente, recuperación bloqueada y elección explícita de borrador. Comprueban controles principales visibles a 390 × 664, 320 × 700 y 844 × 390. Las pruebas de cámara cubren ciclos cortos, discontinuidades, diferentes frecuencias de vídeo, visibilidad, perfiles, calibración completa y pruebas aisladas de la actividad, selección de lente, cancelación con permisos pendientes y orientación. Las pruebas de rutinas cubren orden, reproducción, borradores tras recarga, eliminación con deshacer, duración mayor que la pausa, respaldo y restauración sin duplicados, campos inválidos y metas de flexiones al cambiar de día. Las pruebas móviles usan Chromium con perfil Android y WebKit con perfil iPhone; no sustituyen pruebas en teléfonos físicos. Las pruebas cubren bienvenida, pausa de un minuto, compartir nativo y copia alternativa sin datos personales, arranque fallido, actualización con progreso pendiente, instalación y rutas bajo `/pomodoro-squats/`, además de fechas locales y cambio de hora, exclusión de ejemplos, importación, ciclos de detección, recuperación de borradores, pausas, fin de bloques, importación sin HTML ejecutable, atajos, tamaños de 320 a 1440 px, modo oscuro, uso sin conexión y cámara con poses sintéticas. Las capturas se guardan en la carpeta temporal del sistema (`OUTPUT_DIR` permite elegir otra).
+`tests/address-change.mjs` prueba ambas rutas bajo el mismo origen, datos pendientes, parámetros, bloqueo entre pestañas y cachés independientes. Las pruebas de seguridad de datos reproducen dos pestañas, fallos de escritura, exportación de actividad pendiente, recuperación bloqueada y elección explícita de borrador. Comprueban controles principales visibles a 390 × 664, 320 × 700 y 844 × 390. Las pruebas de cámara cubren ciclos cortos, discontinuidades, diferentes frecuencias de vídeo, visibilidad, perfiles, calibración completa y pruebas aisladas de la actividad, selección de lente, cancelación con permisos pendientes y orientación. Las pruebas de rutinas cubren orden, reproducción, borradores tras recarga, eliminación con deshacer, duración mayor que la pausa, respaldo y restauración sin duplicados, campos inválidos y metas de flexiones al cambiar de día. Las pruebas móviles usan Chromium con perfil Android y WebKit con perfil iPhone; no sustituyen pruebas en teléfonos físicos. Las pruebas cubren bienvenida, pausa de un minuto, compartir nativo y copia alternativa sin datos personales, arranque fallido, actualización con progreso pendiente, instalación y rutas bajo `/pomodoro-squats/`, además de fechas locales y cambio de hora, exclusión de ejemplos, importación, ciclos de detección, recuperación de borradores, pausas, fin de bloques, importación sin HTML ejecutable, atajos, tamaños de 320 a 1440 px, modo oscuro, uso sin conexión y cámara con poses sintéticas. Las capturas se guardan en la carpeta temporal del sistema (`OUTPUT_DIR` permite elegir otra).
 
 ## Archivos
 
-`index.html` y `styles.css` definen la interfaz; `app.js`, los flujos y dispositivos; `camera-options.js`, selección de lente y zoom; `core.js`, validación y fechas; `pose-counter.js`, medición y ciclos; `calibration-model.js` y `camera-guide.js`, calibración y guía; `routine-model.js` y `routine-editor.js`, validación y edición de rutinas; `figure.js` y `routines.js`, demostraciones y rutinas. `boot.js` protege el arranque y `session-guard.js` coordina la pestaña activa; `companion.js` contiene bienvenida, compartir, instalación, ayuda y actualización; `release.js` identifica la versión. `sw.js` conserva un paquete completo por versión para abrir sin conexión.
+`index.html` y `styles.css` definen la interfaz; `app.js`, los flujos y dispositivos; `camera-options.js`, selección de lente y zoom; `core.js`, validación y fechas; `pose-counter.js`, medición y ciclos; `calibration-model.js` y `camera-guide.js`, calibración y guía; `routine-model.js` y `routine-editor.js`, validación y edición de rutinas; `figure.js` y `routines.js`, demostraciones y rutinas. `boot.js` redirige la dirección antigua con conexión, protege el arranque y `session-guard.js` coordina la pestaña activa; `companion.js` contiene bienvenida, compartir, instalación, ayuda y actualización; `release.js` identifica la versión. `sw.js` conserva un paquete completo por versión para abrir sin conexión.
 
 ## Dirección visual
 
@@ -135,7 +141,7 @@ Se conserva la identidad original de terracota y verde salvia, con el temporizad
 
 ## Publicación y actualizaciones
 
-GitHub Pages publica `main` desde la raíz, con HTTPS. `.nojekyll` permite servir los módulos estáticos sin transformación. Antes de subir, ejecutar las pruebas y comprobar que no se están incluyendo datos personales.
+GitHub Pages publica `main` desde la raíz, con HTTPS. El repositorio principal es `eduardosalomonm/pomodoro-musculo`. El repositorio `eduardosalomonm/pomodoro-squats` se conserva con la versión puente 0.7.2 para mantener los enlaces y las instalaciones antiguas; no eliminarlo. Publicar primero en la dirección nueva y comprobarla antes de actualizar el puente antiguo. Las siguientes mejoras se publican en el repositorio principal. `.nojekyll` permite servir los módulos estáticos sin transformación. Antes de subir, ejecutar las pruebas y comprobar que no se están incluyendo datos personales.
 
 Para cada versión nueva, cambiar `VERSION` en `release.js`, `CACHE` en `sw.js` y la versión de `package.json`. El worker descarga el paquete entero antes de activarse; una actualización espera hasta que el usuario pulsa «Guardar y actualizar». Se guarda la actividad pendiente y se recarga, sin borrar el historial. Los archivos de una versión se sirven desde el mismo paquete para evitar mezclar módulos antiguos y nuevos. Probar esta transición con `tests/update.mjs`.
 
