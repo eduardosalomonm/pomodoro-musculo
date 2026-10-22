@@ -1,3 +1,4 @@
+import {cameraSelect,cameraClick} from './ui-helpers.mjs';
 import {VERSION} from '../release.js';
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
@@ -31,7 +32,7 @@ for(const [engine,device,name] of [[chromium,devices['Pixel 7'],'android'],[webk
     await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('blocked');}}}));await page.locator('#shareBtn').click();assert.equal(await page.locator('#publicLink').inputValue(),shared.url);assert.equal(await page.locator('#shareFallback').isVisible(),true);
     const feedback=await page.locator('#feedbackLink').getAttribute('href');assert.equal(feedback.includes('PRIVATE'),false);assert.ok(decodeURIComponent(feedback).includes(`Versión: ${VERSION}`));
     await page.locator('.help-done').click();await page.locator('#settingsBtn').click();await page.locator('#theme').selectOption('dark');await page.locator('.dialog-done').click();
-    await page.locator('#pickPushups').click();await page.locator('#pushupStyle').selectOption('wall');await page.locator('#plusRep').click();
+    await page.locator('#pickPushups').click();await cameraSelect(page,'pushupStyle','wall');await page.locator('#plusRep').click();
     await page.screenshot({path:join(outputDir,`${name}-exercise.png`),fullPage:true});
     for(const viewport of [{width:320,height:700},{width:844,height:390}]){await page.setViewportSize(viewport);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name} overflow at ${viewport.width}`);}
     await page.reload();await page.locator('html[data-ready="true"]').waitFor();assert.equal(await page.locator('#sPushups').innerText(),'1');assert.equal(await page.locator('#welcomeCard').isVisible(),false);assert.deepEqual(errors,[]);

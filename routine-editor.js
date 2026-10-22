@@ -5,10 +5,15 @@ import {fmt,escapeHTML as esc} from './core.js';
 export function initRoutineEditor({store,uid,toast,getRoutines,saveRoutines,onChange}) {
   const $ = id => document.getElementById(id);
   const dialog = $('routineEditor'), form = $('routineForm');
-  let draft = null;
+  let draft = null, nextOpen=null;
+  const choice=$('routineDraftChoice');
+  $('continueExistingDraft').onclick=()=>{nextOpen=null;choice.close();open(null,false,true);};
+  $('replaceExistingDraft').onclick=()=>{if(!store.remove(draftKey)){toast('No se pudo descartar el borrador. Se conserva.');return;}const args=nextOpen;nextOpen=null;draft=null;choice.close();if(args)open(...args);};
+  $('cancelDraftChoice').onclick=()=>{nextOpen=null;choice.close();};
+  choice.addEventListener('cancel',()=>nextOpen=null);
   const draftKey = 'ps.routineDraft';
   const currentDraft = () => {
-    const raw = store.get(draftKey,null);
+    const raw = draft || store.get(draftKey,null);
     if (!raw || !Array.isArray(raw.steps) || !raw.steps.length || raw.steps.length > STEP_LIMIT || typeof raw.name !== 'string') return null;
     if (!raw.steps.every(step=>Array.isArray(step)&&typeof step[0]==='string'&&Object.hasOwn(MOVES,step[0])&&(typeof step[1]==='string'||typeof step[1]==='number'))) return null;
     return {id:typeof raw.id==='string'&&/^custom-[a-zA-Z0-9-]{1,100}$/.test(raw.id)?raw.id:`custom-${uid()}`,name:raw.name.slice(0,60),steps:raw.steps.map(([move,seconds])=>[move,String(seconds).slice(0,3)])};
@@ -48,6 +53,7 @@ export function initRoutineEditor({store,uid,toast,getRoutines,saveRoutines,onCh
     }
   }
   function open(routine=null,copy=false,resume=false) {
+    if(!resume&&currentDraft()){nextOpen=[routine,copy,false];choice.showModal();$('continueExistingDraft').focus();return;}
     const exists = routine && getRoutines().some(r=>r.id===routine.id);
     if (!resume && (!exists || copy) && getRoutines().length>=ROUTINE_LIMIT) { toast('Puedes guardar hasta 50 rutinas. Elimina una para crear otra.'); return; }
     draft = resume ? currentDraft() : routine ? {id:exists&&!copy?routine.id:`custom-${uid()}`,name:copy?`${routine.name.slice(0,52)} · copia`:routine.name,steps:routine.steps.map(([move,seconds])=>[move,String(seconds)])} : {id:`custom-${uid()}`,name:'',steps:[['shrug','30'],['reach','30']]};
@@ -82,7 +88,7 @@ export function initRoutineEditor({store,uid,toast,getRoutines,saveRoutines,onCh
   $('addRoutineStep').onclick=()=>{if(draft.steps.length>=STEP_LIMIT)return;draft.steps.push(['shrug','30']);renderSteps(draft.steps.length-1);persist();$('routineSteps').lastElementChild.scrollIntoView({block:'nearest'});};
   $('closeRoutineEditor').onclick=()=>{persist();dialog.close();};
   dialog.addEventListener('cancel',persist);
-  $('discardRoutineDraft').onclick=()=>{store.remove(draftKey);draft=null;dialog.close();renderDraftButton();toast('Borrador descartado');};
+  $('discardRoutineDraft').onclick=()=>{if(!store.remove(draftKey)){toast('No se pudo descartar. Se conserva el borrador.');return;}draft=null;dialog.close();renderDraftButton();toast('Borrador descartado');};
   $('resumeRoutineDraft').onclick=()=>open(null,false,true);
   form.onsubmit=e=>{
     e.preventDefault(); if(!form.reportValidity())return;

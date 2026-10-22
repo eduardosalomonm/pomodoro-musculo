@@ -30,7 +30,7 @@ try{
   await page.locator('#updateAppBtn').click();assert.equal(await page.locator('#appVersion').innerText(),`Beta ${VERSION}`);assert.match(await page.locator('#toast').innerText(),/Exporta un respaldo/);
   await page.evaluate(()=>{Storage.prototype.setItem=window.originalSetItem;});
   await page.locator('#updateAppBtn').click();await page.waitForFunction(version=>document.getElementById('appVersion')?.textContent===`Beta ${version}`,nextVersion);
-  assert.equal(await page.locator('#sPushups').innerText(),'5');assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ps.log')).length),1);assert.equal(await page.evaluate(()=>localStorage.getItem('ps.exercise')),null);assert.match(await page.locator('#startBtn').innerText(),/Pausar/);
+  assert.equal(await page.locator('#sPushups').innerText(),'5');assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ps.log')).length),1);assert.equal(await page.evaluate(()=>localStorage.getItem('ps.exercise')),null);assert.match(await page.locator('#startBtn').innerText(),/Continuar/);
   await context.setOffline(true);await page.reload();await page.locator('html[data-ready="true"]').waitFor();assert.equal(await page.locator('#appVersion').innerText(),`Beta ${nextVersion}`);assert.equal(await page.locator('#sPushups').innerText(),'5');assert.deepEqual(errors,[]);
   console.log('Subpath hosting, coherent release cache, waiting update, progress-preserving reload and offline upgrade passed.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

@@ -1,3 +1,4 @@
+import {cameraSelect,cameraClick} from './ui-helpers.mjs';
 import {poseFixture} from './pose-fixtures.mjs';
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
@@ -39,7 +40,7 @@ try {
   const pose=async(angle,push=false)=>cp.evaluate(lm=>{window.syntheticPose=lm;},poseFixture(angle,push?'pushups-wall':'squats'));
   await pose(175);await cp.waitForTimeout(450);await pose(80);await cp.waitForTimeout(700);await pose(175);await cp.waitForFunction(()=>document.getElementById('repCount').textContent==='1');
   await cp.locator('#saveExercise').click();let logs=await cp.evaluate(()=>JSON.parse(localStorage.getItem('ps.log')));assert.equal(logs[0].source,'camera');assert.equal(logs[0].reps,1);
-  await cp.locator('#restFocus').click();await cp.locator('#pickPushups').click();await cp.locator('#pushupStyle').selectOption('wall');await cp.locator('#camBtn').click();await cp.waitForFunction(()=>document.getElementById('camBtn').textContent==='Apagar cámara');
+  await cp.locator('#restFocus').click();await cp.locator('#pickPushups').click();await cameraSelect(cp,'pushupStyle','wall');await cp.locator('#camBtn').click();await cp.waitForFunction(()=>document.getElementById('camBtn').textContent==='Apagar cámara');
   await pose(175,true);await cp.waitForTimeout(450);await pose(80,true);await cp.waitForTimeout(700);await pose(175,true);await cp.waitForFunction(()=>document.getElementById('repCount').textContent==='1');
   await cp.locator('#saveExercise').click();logs=await cp.evaluate(()=>JSON.parse(localStorage.getItem('ps.log')));assert.equal(logs[0].type,'Flexiones');assert.equal(logs[0].source,'camera');assert.equal(logs[0].detail,'Contra la pared');assert.deepEqual(errors,[]);
   console.log('Camera lifecycle and synthetic squat/pushup pose integration passed (not physical accuracy).');

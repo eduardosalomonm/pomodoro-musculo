@@ -29,7 +29,7 @@ await page.locator('#pickStretch').click();await page.locator('[data-id="quick"]
 let logs=await page.evaluate(()=>JSON.parse(localStorage.getItem('ps.log')));const stretch=logs.find(e=>e.type==='Estiramiento');assert.ok(stretch.durationSec>=7&&stretch.durationSec<=9,`active seconds: ${stretch.durationSec}`);
 await page.setViewportSize({width:390,height:844});await page.locator('#resetBtn').click();await page.clock.fastForward(4000);await page.screenshot({path:join(outputDir,'mobile.png'),fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'mobile overflow');
 await page.locator('#pickPushups').click();await page.screenshot({path:join(outputDir,'mobile-exercise.png'),fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'exercise overflow');
-await page.locator('#settingsBtn').click();await page.screenshot({path:join(outputDir,'mobile-settings.png'),fullPage:true});await page.locator('.dialog-done').click();
+await page.locator('#openCameraSettings').click();await page.locator('#exerciseAppSettings').click();await page.screenshot({path:join(outputDir,'mobile-settings.png'),fullPage:true});await page.locator('.dialog-done').click();
 
 // Keyboard Space on a focused button must not trigger the global timer shortcut.
 await page.locator('#plusRep').focus();await page.keyboard.press('Space');assert.equal(await page.locator('#repCount').innerText(),'1');assert.match(await page.locator('#startBtn').innerText(),/Pausar/);

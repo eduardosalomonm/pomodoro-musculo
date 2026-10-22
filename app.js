@@ -12,12 +12,13 @@ const $=id=>document.getElementById(id);
 const store={
   get(k,d){try {const v=localStorage.getItem(k);return v?JSON.parse(v):d;} catch{return d;}},
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch{$('storageWarning').hidden=false;return false;}},
-  remove(k){try{localStorage.removeItem(k);}catch{$('storageWarning').hidden=false;}}
+  remove(k){try{localStorage.removeItem(k);return true;}catch{$('storageWarning').hidden=false;return false;}}
 };
 let settings=normalizeSettings(store.get('ps.settings',{}));
 let customRoutines=cleanRoutines(store.get('ps.routines',[]));
 let pendingRoutine=null;
 let log=cleanLog(store.get('ps.log',[]));
+let recoveryPending=[];
 let pomos=cleanDaily(store.get('ps.pomos',{})), focusMinutes=cleanDaily(store.get('ps.focusMinutes',{}));
 const uid=()=>crypto.randomUUID?.()??`${Date.now()}-${Math.random().toString(16).slice(2)}`;
 let toastTimeout;
@@ -27,8 +28,17 @@ function toast(message,undo){
   $('toast').classList.add('show');toastTimeout=setTimeout(()=>$('toast').classList.remove('show'),undo?7000:3500);
 }
 function announce(message){$('announcer').textContent=message;}
-function saveLog(){const saved=store.set('ps.log',log);renderStats();renderHistory();return saved;}
-function upsert(entry){const clean=cleanEntry(entry);if(!clean)return false;const i=log.findIndex(e=>e.id===clean.id);if(i<0)log.unshift(clean);else log[i]=clean;log.sort((a,b)=>b.ts-a.ts);return saveLog();}
+function saveLog(next=log){if(!store.set('ps.log',next))return false;log=next;renderStats();renderHistory();return true;}
+function upsert(entry){const clean=cleanEntry(entry);if(!clean)return false;return saveLog([...log.filter(e=>e.id!==clean.id),clean].sort((a,b)=>b.ts-a.ts));}
+function saveFailed(){
+  stopCamera();timer.remaining=remaining();timer.running=false;saveTimer();
+  if(rt.r){rt.paused=true;rt.timerPaused=false;renderStep();}
+  $('saveFailure').hidden=false;renderTimer();toast('No se ha guardado. Conservamos tu actividad aquí. Reintenta o exporta un respaldo.');
+}
+function flushRecovered(){for(const entry of [...recoveryPending]){if(!upsert(entry)){saveFailed();return false;}recoveryPending=recoveryPending.filter(e=>e.id!==entry.id);for(const key of ['ps.exercise','ps.routine'])if(store.get(key,null)?.id===entry.id)store.remove(key);}return true;}
+function clearSaveFailure(){$('saveFailure').hidden=true;}
+$('retrySave').onclick=()=>{if(view==='exercise')$('saveExercise').click();else if(rt.r)finishRoutine();else if(flushRecovered()&&saveLog())clearSaveFailure();};
+$('exportPending').onclick=()=>$('exportBtn').click();
 // Write history first. If interrupted before removing a draft, its ID prevents duplication.
 let audioCtx;
 function unlockAudio(){try{audioCtx??=new AudioContext();audioCtx.resume().catch(()=>{});}catch{}}
@@ -70,6 +80,7 @@ function renderTimer(){
   $('timerMessage').textContent=isBreak?'Cambia de postura.':timer.running?'Una cosa a la vez.':'Este rato es para ti.';
   $('timerHint').textContent=isBreak?'Elige una actividad y muévete a tu ritmo.':`Después, ${settings.breakMin} min para moverte.`;
   $('breakNowBtn').hidden=isBreak;$('snoozeBtn').hidden=!isBreak;$('skipBtn').hidden=!isBreak;$('breakClock').hidden=!isBreak;
+  $('exerciseClock').textContent=`${timer.running?'Pausa':'En pausa'} · ${fmt(rem)}`;$('exercisePause').textContent=timer.running?'Pausar':'Continuar';
   $('breakClock').textContent=`${timer.running?'Pausa':'En pausa'} · ${fmt(rem)}`;$('restTime').textContent=fmt(rem);
   $('b-title').textContent=isBreak?'Dale movimiento a tu pausa':'Tu próxima pausa';
   $('focusCount').textContent=`${pomos[dayKey()]||0} ${pomos[dayKey()]===1?'bloque':'bloques'} hoy`;
@@ -81,38 +92,39 @@ function startTimer(){store.set('ps.welcomed',true);$('welcomeCard').hidden=true
 function pauseTimer(){if(timer.running&&Date.now()>=timer.endAt){updateTimer();return;}timer.remaining=remaining();timer.running=false;saveTimer();if(rt.r&&!rt.paused){tickRoutine();rt.paused=true;rt.timerPaused=true;renderStep();}renderTimer();}
 function beginBreak(fromTimer=false,duration=settings.breakMin*60){
   const endAt=timer.endAt,minutes=Math.round(timer.total/60),count=fromTimer&&!timer.snoozed;
-  settleActivity();clearTimeout(breakNudge);
+  if(settleActivity()===false)return;clearTimeout(breakNudge);
   if(count){const key=dayKey(endAt||Date.now());pomos[key]=(pomos[key]||0)+1;focusMinutes[key]=(focusMinutes[key]||0)+minutes;store.set('ps.pomos',pomos);store.set('ps.focusMinutes',focusMinutes);}
   setMode('break');timer.total=timer.remaining=duration;startTimer();showView('choose');$('chooseHint').textContent=`Tienes ${fmt(duration)} para moverte. Elige una actividad.`;
   if(fromTimer){notify('Hora de moverte','Elige sentadillas, flexiones o estiramientos.');say('Hora de una pausa. Elige cómo quieres moverte.');}
   breakNudge=setTimeout(()=>{if(view==='choose'&&timer.mode==='break'&&timer.running)notify('Tu pausa sigue en marcha','Un poco de movimiento también cuenta.');},60000);
 }
 function endBreak(){
-  clearTimeout(breakNudge);const saved=settleActivity(timer.endAt);setMode('focus');showView('choose');
+  clearTimeout(breakNudge);const saved=settleActivity(timer.endAt);if(saved===false)return;setMode('focus');showView('choose');
   $('chooseHint').textContent=saved?'Tu movimiento está guardado. Cuando quieras, empieza otro bloque.':'Pausa terminada. Cuando quieras, empieza otro bloque.';
   notify('Vuelta al foco','Tu pausa ha terminado.');say('Pausa terminada. De vuelta al foco.');if(settings.autoFocus)startTimer();renderTimer();
 }
 function updateTimer(){if(timer.running&&Date.now()>=timer.endAt)timer.mode==='focus'?beginBreak(true):endBreak();renderTimer();if(dayKey()!==renderedDay)renderStats();}
 $('startBtn').onclick=()=>timer.running?pauseTimer():startTimer();
-$('resetBtn').onclick=()=>{settleActivity();clearTimeout(breakNudge);setMode('focus');showView('choose');$('chooseHint').textContent='Elige cómo quieres moverte. Tu pausa empieza al elegir.';renderTimer();};
+$('resetBtn').onclick=()=>{if(settleActivity()===false)return;clearTimeout(breakNudge);setMode('focus');showView('choose');$('chooseHint').textContent='Elige cómo quieres moverte. Tu pausa empieza al elegir.';renderTimer();};
 $('breakNowBtn').onclick=()=>{if(timer.mode==='break')return;beginBreak();$('breakCard').focus({preventScroll:true});$('breakCard').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});};
-$('snoozeBtn').onclick=()=>{settleActivity();clearTimeout(breakNudge);setMode('focus');timer.total=timer.remaining=300;timer.snoozed=true;startTimer();showView('choose');$('chooseHint').textContent='Tu pausa está pospuesta. Te avisamos en 5 minutos.';toast('Pausa pospuesta 5 min');};
-$('skipBtn').onclick=()=>{settleActivity();clearTimeout(breakNudge);setMode('focus');showView('choose');$('chooseHint').textContent='Cuando quieras, empieza otro bloque.';if(settings.autoFocus)startTimer();renderTimer();};
+$('snoozeBtn').onclick=()=>{if(settleActivity()===false)return;clearTimeout(breakNudge);setMode('focus');timer.total=timer.remaining=300;timer.snoozed=true;startTimer();showView('choose');$('chooseHint').textContent='Tu pausa está pospuesta. Te avisamos en 5 minutos.';toast('Pausa pospuesta 5 min');};
+$('skipBtn').onclick=()=>{if(settleActivity()===false)return;clearTimeout(breakNudge);setMode('focus');showView('choose');$('chooseHint').textContent='Cuando quieras, empieza otro bloque.';if(settings.autoFocus)startTimer();renderTimer();};
 let demoStop=null,stretchDemoStop=null;
 function showView(next){
-  view=next;for(const v of ['choose','exercise','stretch','rest'])$(`v${v[0].toUpperCase()+v.slice(1)}`).hidden=v!==next;
-  $('backToChoices').hidden=next==='choose'||next==='rest';
+  view=next;document.body.classList.toggle('is-exercise',next==='exercise');$('exerciseExitSlot').append($('backToChoices'));if(next!=='exercise')document.querySelector('.break-actions').prepend($('backToChoices'));
+  for(const v of ['choose','exercise','stretch','rest'])$(`v${v[0].toUpperCase()+v.slice(1)}`).hidden=v!==next;
+  $('backToChoices').hidden=next==='choose'||next==='rest';if(next==='exercise'){if(matchMedia('(max-width:700px), (max-width:950px) and (max-height:500px)').matches)window.scrollTo(0,0);$('exerciseTitle').focus({preventScroll:true});}
   demoStop?.();demoStop=null;
   if(next==='exercise')demoStop=animate($('exerciseDemo'),()=>camOn?null:exercise.kind==='pushups'?{pushup:performance.now()/3000,wall:settings.pushupStyle==='wall'}:MOVES.squat);
   if(next==='stretch'){$('player').hidden=true;$('routinePicker').hidden=false;renderRoutinePicker();}
 }
-$('backToChoices').onclick=()=>{const saved=settleActivity();showView('choose');if(saved)toast('Movimiento guardado');};
+$('backToChoices').onclick=()=>{const saved=settleActivity();if(saved===false)return;showView('choose');if(saved)toast('Movimiento guardado');};
 function renderChoices(){
   $('squatChoiceTarget').textContent=`${settings.targetReps} reps`;$('pushupChoiceTarget').textContent=`${settings.pushupTarget} reps`;
   for(const [k,id] of [['squats','pickSquats'],['pushups','pickPushups'],['stretch','pickStretch']])$(id).querySelector('.preferred').hidden=settings.preferredExercise!==k||!store.get('ps.hasChosen',false);
 }
 function pickActivity(kind){
-  unlockAudio();if(timer.mode!=='break')beginBreak();else settleActivity();clearTimeout(breakNudge);
+  unlockAudio();if(timer.mode!=='break'){beginBreak();if(timer.mode!=='break')return;}else if(settleActivity()===false)return;clearTimeout(breakNudge);
   settings.preferredExercise=kind;store.set('ps.settings',settings);store.set('ps.hasChosen',true);renderChoices();
   if(kind==='stretch'){showView('stretch');announce('Elige una rutina de estiramientos.');return;}
   exercise={id:uid(),ts:Date.now(),kind,reps:0,cameraReps:0,manual:false};showView('exercise');renderExercise();announce(`${kind==='pushups'?'Flexiones':'Sentadillas'}. Objetivo: ${exerciseTarget()} repeticiones.`);
@@ -135,16 +147,16 @@ function renderReps(){
   $('minusRep').disabled=n===0;$('saveExercise').disabled=n===0;
 }
 function exerciseEntry(){if(!exercise?.reps)return null;return {id:exercise.id,ts:exercise.ts,type:exercise.kind==='pushups'?'Flexiones':'Sentadillas',reps:exercise.reps,target:exerciseTarget(),source:exercise.cameraReps?(exercise.manual?'mixed':'camera'):'manual',...(exercise.kind==='pushups'?{detail:settings.pushupStyle==='wall'?'Contra la pared':'En suelo'}:{})};}
-function persistExercise(){const e=exerciseEntry();if(e)store.set('ps.exercise',e);else store.remove('ps.exercise');}
+function persistExercise(){if(!exercise)return;const e=exerciseEntry();if(e)store.set('ps.exercise',e);else store.remove('ps.exercise');}
 function addRep(n=1,fromCamera=false){
   if(!exercise||cameraGuide.active)return;const before=exercise.reps;exercise.reps=Math.max(0,Math.min(100000,before+n));if(fromCamera)exercise.cameraReps++;else exercise.manual=true;persistExercise();renderReps();
   if(fromCamera){beep(660,70,1);if(exercise.reps%5===0)say(String(exercise.reps));}
   if(before<exerciseTarget()&&exercise.reps>=exerciseTarget()){say('Objetivo cumplido. Puedes seguir o guardar y descansar.');toast('Objetivo cumplido. ¡Cada repetición suma!');}
 }
-function saveExercise(){const e=exerciseEntry();if(!e)return '';const saved=upsert(e);if(saved)store.remove('ps.exercise');return `${e.reps} ${e.type.toLowerCase()}`;}
+function saveExercise(){const e=exerciseEntry();if(!e)return '';const saved=upsert(e);if(!saved){saveFailed();return false;}store.remove('ps.exercise');clearSaveFailure();return `${e.reps} ${e.type.toLowerCase()}`;}
 $('plusRep').onclick=()=>addRep();$('minusRep').onclick=()=>addRep(-1);$('plusFive').onclick=()=>addRep(5);
 $('saveExercise').onclick=()=>{const label=saveExercise();if(!label)return;stopCamera();exercise=null;renderReps();showView('rest');$('restDone').textContent=label;announce(`Guardado: ${label}`);toast(`Guardado: ${label}`);};
-$('pushupStyle').onchange=()=>{const label=saveExercise();stopCamera();settings.pushupStyle=$('pushupStyle').value;store.set('ps.settings',settings);exercise={id:uid(),ts:Date.now(),kind:'pushups',reps:0,cameraReps:0,manual:false};renderExercise();if(label)toast(`Guardado: ${label}`);};
+$('pushupStyle').onchange=()=>{const label=saveExercise();if(label===false){$('pushupStyle').value=settings.pushupStyle;return;}stopCamera();settings.pushupStyle=$('pushupStyle').value;store.set('ps.settings',settings);exercise={id:uid(),ts:Date.now(),kind:'pushups',reps:0,cameraReps:0,manual:false};renderExercise();if(label)toast(`Guardado: ${label}`);};
 $('restStretch').onclick=()=>pickActivity('stretch');$('restFocus').onclick=()=>$('skipBtn').click();
 let wakeLock=null,wakePending=false,wakeWanted=false;
 async function keepAwake(on){wakeWanted=on;if(!on){const lock=wakeLock;wakeLock=null;try{await lock?.release();}catch{}return;}if(wakePending||wakeLock||document.hidden)return;wakePending=true;try{const lock=await navigator.wakeLock?.request('screen');if(wakeWanted&&!document.hidden){wakeLock=lock;lock?.addEventListener('release',()=>{if(wakeLock===lock)wakeLock=null;});}else await lock?.release();}catch{}finally{wakePending=false;}}
@@ -161,16 +173,21 @@ function renderCameraOptions(){
 }
 const cameraContext=()=>({kind:calibrationKind(exercise?.kind,settings.pushupStyle),facing,lens:cameraLens,aspect:$('video').videoWidth&&$('video').videoHeight?$('video').videoWidth/$('video').videoHeight:4/3});
 const cameraGuide=createCameraGuide({store,getContext:cameraContext,getReady:()=>camOn,toast,say,announce,
-  onBegin:()=>{const token={resume:timer.mode==='break'&&timer.running,id:exercise?.id};if(token.resume)pauseTimer();return token;},
+  onBegin:()=>{$('cameraSettingsDialog').close();const token={resume:timer.mode==='break'&&timer.running,id:exercise?.id};if(token.resume)pauseTimer();return token;},
   onEnd:token=>{if(token?.resume&&exercise?.id===token.id&&timer.mode==='break'&&!timer.running)startTimer();},
   onReset:()=>tracker?.reset(),
-  onLock:active=>{document.body.classList.toggle('is-calibrating',active);for(const id of ['startBtn','resetBtn','snoozeBtn','skipBtn','pushupStyle','cameraFacing','wideCamera','cameraLens','plusRep','minusRep','plusFive','saveExercise','settingsBtn','testCalibration','forgetCalibration'])$(id).disabled=active;if(!active)renderReps();},
+  onLock:active=>{document.body.classList.toggle('is-calibrating',active);for(const id of ['startBtn','resetBtn','snoozeBtn','skipBtn','pushupStyle','cameraFacing','wideCamera','cameraLens','exercisePause','openCameraSettings','plusRep','minusRep','plusFive','saveExercise','settingsBtn','testCalibration','forgetCalibration'])$(id).disabled=active;if(!active)renderReps();},
   onCancel:()=>{if(camLoading)stopCamera();else{cameraGuide.cancel();$('camHint').textContent='Calibración cancelada. Puedes seguir con el conteo o contar a mano.';}}
 });
+$('exercisePause').onclick=()=>$('startBtn').click();
+$('openCameraSettings').onclick=()=>{$('cameraSettingsDialog').showModal();$('closeCameraSettings').focus();};
+$('closeCameraSettings').onclick=()=>$('cameraSettingsDialog').close();
+$('exerciseAppSettings').onclick=()=>{$('cameraSettingsDialog').close();openSettings();};
+$('cameraSettingsDialog').addEventListener('close',()=>tracker?.reset());
 $('calibrateBtn').onclick=()=>{if(!exercise||camLoading)return;if(camOn)cameraGuide.start();else{cameraGuide.prepare();startCamera(true);}};
 function saveCameraChoice(){store.set('ps.cameraFacing',facing);store.set('ps.cameraWide',wideCamera);store.set('ps.cameraDevice',cameraDevice);$('cameraFacing').value=facing;cameraLens='';cameraGuide.summary();renderCameraOptions();}
 $('cameraFacing').onchange=()=>{const restart=camOn;const next=$('cameraFacing').value;stopCamera();facing=next;wideCamera=false;cameraDevice='';saveCameraChoice();$('wideCameraStatus').textContent='Puedes probar el encuadre amplio con la cámara trasera.';if(restart)startCamera();};
-$('wideCamera').onclick=()=>{const next=!wideCamera;stopCamera();wideCamera=next;facing='environment';cameraDevice='';saveCameraChoice();startCamera();};
+$('wideCamera').onclick=()=>{$('cameraSettingsDialog').close();const next=!wideCamera;stopCamera();wideCamera=next;facing='environment';cameraDevice='';saveCameraChoice();startCamera();};
 $('cameraLens').onchange=()=>{const next=$('cameraLens').value,restart=camOn;stopCamera();cameraDevice=next;saveCameraChoice();if(restart)startCamera();};
 renderCameraOptions();
 matchMedia('(orientation: portrait)').addEventListener('change',()=>{if(camOn||camLoading){stopCamera();$('camHint').textContent='La orientación cambió. Vuelve a activar la cámara con este encuadre y calibra si hace falta.';}});
@@ -221,12 +238,13 @@ function runDetection(generation){
       if(!measurement.valid){tracker.reset();lastPose=null;$('camHint').textContent=measurement.message;}
       else{
         if(poseChanged(lastPose,measurement))tracker.reset();lastPose=measurement;
-        if(!cameraGuide.active){
+        if(!cameraGuide.active&&!$('cameraSettingsDialog').open){
           const p=cameraGuide.profile();tracker.depth=p?.down??(exercise.kind==='pushups'?100:settings.depth);tracker.up=p?.up??155;
           if(tracker.update(measurement.angle,performance.now()))addRep(1,true);
           $('camHint').textContent=tracker.reason==='fast'?'Ve un poco más despacio: ese ciclo fue demasiado corto.':tracker.phase==='ready'?`Extiende ${exercise.kind==='pushups'?'los brazos':'las piernas'} para empezar.`:tracker.phase==='down'?'Ahora vuelve a extender para completar la repetición.':`${exercise.kind==='pushups'?'Flexiona los codos':'Baja a tu ritmo'} y vuelve a subir.`;
         }
       }
+      if($('cameraSettingsDialog').open)tracker.reset();
       if(cameraGuide.active){cameraGuide.feed(measurement,performance.now());$('camHint').textContent=measurement.valid?'Calibración en curso · sigue las instrucciones.':measurement.message;}
     }}catch{stopCamera();$('camHint').textContent='La detección se ha detenido. Tus repeticiones se conservan; puedes continuar a mano.';return;}
     camRaf=requestAnimationFrame(tick);
@@ -263,9 +281,9 @@ $('routineList').onclick=e=>{
   if(action){const r=allRoutines().find(r=>r.id===action.dataset.routine);if(!r)return;if(action.dataset.routineAction==='delete')routineEditor.remove(r);else routineEditor.open(r,action.dataset.routineAction==='copy');return;}
   const b=e.target.closest('[data-id]');if(b)requestRoutine(allRoutines().find(r=>r.id===b.dataset.id));
 };
-function routineEntry(partial=true){const seconds=Math.floor(rt.elapsedMs/1000);return rt.r&&seconds>0?{id:rt.id,ts:rt.ts,type:'Estiramiento',detail:rt.r.name,durationSec:seconds,source:'routine',partial}:null;}
+function routineEntry(partial=!(rt.r&&rt.i===rt.r.steps.length-1&&rt.left<=0)){const seconds=Math.floor(rt.elapsedMs/1000);return rt.r&&seconds>0?{id:rt.id,ts:rt.ts,type:'Estiramiento',detail:rt.r.name,durationSec:seconds,source:'routine',partial}:null;}
 function persistRoutine(){const e=routineEntry();if(e)store.set('ps.routine',e);}
-function startRoutine(r){if(!r)return;r={...r,steps:r.steps.map(step=>[...step])};stopRoutine();Object.assign(rt,{r,id:uid(),i:0,left:r.steps[0][1],elapsedMs:0,paused:!timer.running,timerPaused:!timer.running,lastAt:Date.now(),ts:Date.now(),spoken:false,lastSaved:0});$('routineFit').hidden=true;$('routinePicker').hidden=true;$('player').hidden=false;stretchDemoStop=animate($('stretchDemo'),()=>rt.r?MOVES[rt.r.steps[rt.i][0]]:null);keepAwake(!rt.paused);speakStep();renderStep();}
+function startRoutine(r){if(!r)return;r={...r,steps:r.steps.map(step=>[...step])};if(stopRoutine()===false)return;Object.assign(rt,{r,id:uid(),i:0,left:r.steps[0][1],elapsedMs:0,paused:!timer.running,timerPaused:!timer.running,lastAt:Date.now(),ts:Date.now(),spoken:false,lastSaved:0});$('routineFit').hidden=true;$('routinePicker').hidden=true;$('player').hidden=false;stretchDemoStop=animate($('stretchDemo'),()=>rt.r?MOVES[rt.r.steps[rt.i][0]]:null);keepAwake(!rt.paused);speakStep();renderStep();}
 function speakStep(){const m=MOVES[rt.r.steps[rt.i][0]];if(!rt.paused){beep(740,100,1);say(`${m.name}. ${m.cue}`);}}
 function tickRoutine(now=Date.now()){
   if(!rt.r)return;
@@ -278,15 +296,15 @@ function tickRoutine(now=Date.now()){
 }
 function renderStep(){if(!rt.r)return;const m=MOVES[rt.r.steps[rt.i][0]];const state=`${rt.id}:${rt.i}:${rt.paused}`;if(rt.lastAnnouncement!==state){rt.lastAnnouncement=state;announce(`${m.name}. Paso ${rt.i+1} de ${rt.r.steps.length}.${rt.paused?' Rutina en pausa.':''}`);}$('stepIdx').textContent=`${rt.r.name} · ${rt.i+1} de ${rt.r.steps.length}`;$('stepName').textContent=m.name;$('stepCue').textContent=m.cue;$('stepTime').textContent=fmt(rt.left);$('stepBars').innerHTML=rt.r.steps.map((_,j)=>`<i class="${j<rt.i?'done':j===rt.i?'now':''}"></i>`).join('');$('playPause').textContent=rt.paused?'Continuar rutina':'Pausar rutina';$('prevStep').disabled=rt.i===0;$('nextStep').textContent=rt.i===rt.r.steps.length-1?'Terminar →':'Siguiente →';$('routineStatus').textContent=rt.paused?'Rutina en pausa. Solo se registra el tiempo activo.':`Tiempo activo: ${fmt(Math.floor(rt.elapsedMs/1000))}. Se guarda al terminar o cambiar de actividad.`;}
 function stopRoutine(save=true){
-  if(!rt.r)return '';const entry=routineEntry();if(save&&entry){if(upsert(entry))store.remove('ps.routine');}
+  if(!rt.r)return '';const entry=routineEntry();if(save&&entry){if(!upsert(entry)){saveFailed();return false;}store.remove('ps.routine');clearSaveFailure();}
   rt.r=null;stretchDemoStop?.();stretchDemoStop=null;try{speechSynthesis.cancel();}catch{}keepAwake(camOn);return entry?`${fmt(entry.durationSec)} de estiramiento`:'';
 }
-function finishRoutine(partial=true){const e=routineEntry(partial),name=rt.r?.name;if(e){if(upsert(e))store.remove('ps.routine');}stopRoutine(false);say(partial?'Rutina guardada.':'Rutina completa. Disfruta de la pausa.');showView('rest');$('restDone').textContent=e?`${name} · ${fmt(e.durationSec)}`:'Rutina terminada';toast(e?'Tiempo activo guardado':'No hubo tiempo activo que guardar');announce(e?'Rutina guardada':'Rutina terminada');}
+function finishRoutine(partial=!(rt.r&&rt.i===rt.r.steps.length-1&&rt.left<=0)){const e=routineEntry(partial),name=rt.r?.name;if(e){if(!upsert(e)){saveFailed();return;}store.remove('ps.routine');clearSaveFailure();}stopRoutine(false);say(partial?'Rutina guardada.':'Rutina completa. Disfruta de la pausa.');showView('rest');$('restDone').textContent=e?`${name} · ${fmt(e.durationSec)}`:'Rutina terminada';toast(e?'Tiempo activo guardado':'No hubo tiempo activo que guardar');announce(e?'Rutina guardada':'Rutina terminada');}
 $('playPause').onclick=()=>{tickRoutine();if(!rt.r)return;const resume=rt.paused;if(resume&&timer.mode==='break'&&!timer.running)startTimer();rt.paused=!resume;rt.timerPaused=false;rt.lastAt=Date.now();renderStep();keepAwake(!rt.paused);if(rt.paused)try{speechSynthesis.cancel();}catch{}};
 function navigateStep(direction){tickRoutine();if(!rt.r)return;const next=rt.i+direction;if(next>=rt.r.steps.length){finishRoutine();return;}if(next<0)return;rt.i=next;rt.left=rt.r.steps[next][1];rt.lastAt=Date.now();rt.spoken=false;speakStep();renderStep();}
 $('prevStep').onclick=()=>navigateStep(-1);$('nextStep').onclick=()=>navigateStep(1);$('finishStretch').onclick=()=>{tickRoutine();if(rt.r)finishRoutine();};
 function settleActivity(at=Date.now()){
-  tickRoutine(at);const exerciseLabel=saveExercise(),stretchLabel=stopRoutine();stopCamera();demoStop?.();demoStop=null;exercise=null;renderReps();return exerciseLabel||stretchLabel;
+  if(!flushRecovered())return false;tickRoutine(at);const exerciseLabel=saveExercise();if(exerciseLabel===false)return false;const stretchLabel=stopRoutine();if(stretchLabel===false)return false;stopCamera();demoStop?.();demoStop=null;exercise=null;renderReps();return exerciseLabel||stretchLabel;
 }
 let renderedDay='';
 function renderStats(){
@@ -310,17 +328,17 @@ function renderHistory(){
 $('showMore').onclick=()=>{historyLimit+=20;renderHistory();};
 $('log').onclick=e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const li=b.closest('li'),entry=log.find(x=>x.id===li.dataset.id);if(!entry)return;
-  if(b.dataset.act==='delete'){log=log.filter(x=>x.id!==entry.id);saveLog();toast('Registro eliminado',()=>{upsert(entry);});return;}
+  if(b.dataset.act==='delete'){if(!saveLog(log.filter(x=>x.id!==entry.id))){toast('No se pudo borrar el registro. Inténtalo de nuevo.');return;}toast('Registro eliminado',()=>{upsert(entry);});return;}
   if(li.querySelector('form'))return;
   const form=document.createElement('form');form.className='row';const inputId=`edit-${uid()}`;
   form.innerHTML=`<label class="micro" for="${inputId}">Total</label><input id="${inputId}" type="number" min="0" max="100000" value="${entry.reps}" required><button class="sm sage" type="submit">Guardar</button><button class="sm ghost" type="button">Cancelar</button>`;
-  form.querySelector('[type="button"]').onclick=()=>form.remove();form.onsubmit=ev=>{ev.preventDefault();if(!form.reportValidity())return;entry.reps=Number(form.querySelector('input').value);delete entry.example;saveLog();toast('Registro actualizado');};li.append(form);form.querySelector('input').focus();
+  form.querySelector('[type="button"]').onclick=()=>form.remove();form.onsubmit=ev=>{ev.preventDefault();if(!form.reportValidity())return;const next={...entry,reps:Number(form.querySelector('input').value)};delete next.example;if(!upsert(next)){toast('No se pudo guardar la corrección. Inténtalo de nuevo.');return;}toast('Registro actualizado');};li.append(form);form.querySelector('input').focus();
 };
 $('mType').onchange=()=>{$('manualUnit').textContent=$('mType').value==='Plancha'?'Segundos':'Repeticiones';};
-$('manualForm').onsubmit=e=>{e.preventDefault();if(!$('manualForm').reportValidity())return;const n=Number($('mReps').value),type=$('mType').value;upsert({id:uid(),ts:Date.now(),type,source:'manual',...(type==='Plancha'?{durationSec:n}:{reps:n})});toast('Ejercicio guardado');};
-$('clearExamples').onclick=()=>{log=log.filter(e=>!e.example);saveLog();toast('Ejemplos eliminados');};
+$('manualForm').onsubmit=e=>{e.preventDefault();if(!$('manualForm').reportValidity())return;const n=Number($('mReps').value),type=$('mType').value;const saved=upsert({id:uid(),ts:Date.now(),type,source:'manual',...(type==='Plancha'?{durationSec:n}:{reps:n})});toast(saved?'Ejercicio guardado':'No se pudo guardar. Conservamos los campos para que puedas reintentar.');};
+$('clearExamples').onclick=()=>{toast(saveLog(log.filter(e=>!e.example))?'Ejemplos eliminados':'No se pudo guardar el cambio. Inténtalo de nuevo.');};
 $('exportBtn').onclick=()=>{
-  persistExercise();persistRoutine();const backupLog=[...log];for(const draft of [exerciseEntry(),routineEntry()])if(draft){const i=backupLog.findIndex(e=>e.id===draft.id);if(i>=0)backupLog[i]=draft;else backupLog.push(draft);}
+  persistExercise();persistRoutine();const backupLog=[...log];for(const draft of [...recoveryPending,exerciseEntry(),routineEntry()])if(draft){const i=backupLog.findIndex(e=>e.id===draft.id);if(i>=0)backupLog[i]=draft;else backupLog.push(draft);}
   const data={app:'pomodoro-squats',version:3,routines:customRoutines,exported:new Date().toISOString(),settings,pomos,focusMinutes,log:backupLog};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download=`pomodoro-squats-${dayKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);$('backupStatus').textContent='Respaldo exportado con tu historial y el movimiento pendiente.';
 };
 $('importBtn').onclick=()=>$('importFile').click();
@@ -329,7 +347,7 @@ $('importFile').onchange=async()=>{
   try{if(file.size>10*1024*1024)throw Error('too-large');const d=parseBackup(JSON.parse(await file.text()));const ids=new Set(log.map(e=>e.id)),fresh=d.log.filter(e=>!ids.has(e.id));const routineIds=new Set(customRoutines.map(r=>r.id)),newRoutines=d.routines.filter(r=>!routineIds.has(r.id));if(customRoutines.length+newRoutines.length>ROUTINE_LIMIT)throw Error('too-many-routines');if(newRoutines.length){if(!store.set('ps.routines',[...customRoutines,...newRoutines]))throw Error('storage');customRoutines.push(...newRoutines);renderRoutinePicker();}log=cleanLog([...log,...fresh]);for(const [k,v] of Object.entries(d.pomos))pomos[k]=Math.max(pomos[k]||0,v);for(const [k,v] of Object.entries(d.focusMinutes))focusMinutes[k]=Math.max(focusMinutes[k]||0,v);store.set('ps.pomos',pomos);store.set('ps.focusMinutes',focusMinutes);saveLog();renderTimer();$('backupStatus').textContent=`Importados ${fresh.length} registros y ${newRoutines.length} rutinas nuevas. Tus ajustes y metas se conservan.`;toast(`Importados ${fresh.length} registros y ${newRoutines.length} rutinas`);}catch{$('backupStatus').textContent='No se importó ningún dato. El archivo debe ser un respaldo válido de Pomodoro Squats, de hasta 10 MB.';toast('No se pudo importar. Revisa el archivo.');}finally{$('importFile').value='';}
 };
 document.addEventListener('keydown',e=>{
-  if(e.repeat||e.target.closest?.('input,select,textarea,button,a,summary,[contenteditable="true"]')||e.metaKey||e.ctrlKey||e.altKey||$('settingsDialog').open||$('routineEditor').open||$('helpDialog').open||cameraGuide.active)return;
+  if(e.repeat||e.target.closest?.('input,select,textarea,button,a,summary,[contenteditable="true"]')||e.metaKey||e.ctrlKey||e.altKey||$('settingsDialog').open||$('routineEditor').open||$('helpDialog').open||$('cameraSettingsDialog').open||$('routineDraftChoice').open||cameraGuide.active)return;
   if(e.code==='Space'){e.preventDefault();$('startBtn').click();}
   else if(e.key.toLowerCase()==='b'){$('breakNowBtn').click();}
   else if(view==='exercise'&&['+','=','ArrowUp'].includes(e.key)){e.preventDefault();addRep();}
@@ -343,15 +361,16 @@ window.addEventListener('pagehide',()=>{tickRoutine();persistExercise();persistR
 let recovered=0;
 for(const key of ['ps.exercise','ps.routine']){
   const draft=cleanEntry(store.get(key,null));
-  if(draft){if(upsert(draft)){store.remove(key);recovered++;}}else store.remove(key);
+  if(draft){if(upsert(draft)){store.remove(key);recovered++;}else recoveryPending.push(draft);}else store.remove(key);
 }
 if(recovered){$('recoveryNote').textContent='Hemos recuperado el movimiento pendiente de tu última sesión.';$('recoveryNote').hidden=false;}
 
 renderRoutinePicker();applyTheme();populateSettings();renderChoices();renderTimer();renderReps();renderStats();renderHistory();showView('choose');
+if(recoveryPending.length)saveFailed();
 if(timer.mode==='break')$('chooseHint').textContent='Tu pausa sigue en marcha. Elige cómo quieres moverte.';
 setInterval(()=>{updateTimer();tickRoutine();},250);
 initCompanion({store,toast,
   hasSession:()=>timer.running||log.some(e=>!e.example),
   startTrial:()=>{if(timer.running||timer.remaining<timer.total){toast('Termina o reinicia el bloque actual antes de probar.');return;}beginBreak(false,60);$('breakCard').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});$('breakCard').focus({preventScroll:true});},
-  beforeUpdate:()=>{settleActivity();const saved=store.set('ps.log',log);return saveTimer()&&saved;}
+  beforeUpdate:()=>{if(settleActivity()===false)return false;const saved=store.set('ps.log',log);return saveTimer()&&saved;}
 });

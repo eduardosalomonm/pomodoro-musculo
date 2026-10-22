@@ -1,4 +1,4 @@
-# Pomodoro Squats · Beta 0.6.1
+# Pomodoro Squats · Beta 0.7.0
 
 Bloques de foco y pausas con movimiento: sentadillas, flexiones y estiramientos guiados. Sin cuenta; el historial se guarda en este navegador. El vídeo se procesa en el dispositivo.
 
@@ -23,7 +23,16 @@ Abre http://localhost:5180. Usa siempre la misma dirección y puerto: cada direc
 3. Elegir una actividad, probar el conteo manual y guardar. La cámara es opcional.
 4. En Ayuda y privacidad están las instrucciones de instalación y el enlace para reportar problemas. Los comentarios de GitHub son públicos y requieren cuenta; no adjuntar respaldos personales.
 
-Esta beta incluye iconos PNG para Android y un icono específico para la pantalla de inicio de iPhone. La vista de ejercicio compacta el temporizador en móvil. Incluye una imagen de presentación al compartir el enlace y evita indexación en buscadores mientras siga en beta.
+Esta beta incluye iconos PNG para Android y un icono específico para la pantalla de inicio de iPhone. La vista dedicada de ejercicio reúne cámara, contador, pausa y guardado en móvil. Incluye una imagen de presentación al compartir el enlace y evita indexación en buscadores mientras siga en beta.
+
+## Nuevo en la beta 0.7.0
+
+- Modo ejercicio dedicado en móvil: cámara, repeticiones y acciones principales juntas. Ajustes de cámara, variante de flexión y encuadre amplio en un panel inferior accesible. Funciona en Safari sin depender de la API de pantalla completa.
+- Una sola pestaña activa por navegador mediante Web Locks, adquirido antes de leer los datos. Las demás muestran cómo continuar; al cerrar la activa y recargar otra, se lee el historial actualizado. Al volver del historial del navegador se recupera la sesión con una recarga.
+- Un fallo al guardar conserva la actividad y detiene la pausa. «Reintentar» guarda sin duplicados; «Exportar respaldo» incluye lo pendiente. Las transiciones y la actualización se detienen hasta poder guardar. El historial solo cambia en pantalla después de persistirlo.
+- Abrir, editar o copiar una rutina con un borrador pendiente ofrece continuar ese borrador, descartarlo expresamente o cancelar. Cerrar el diálogo conserva lo escrito.
+
+Para actualizar desde una beta anterior, guarda la actividad y cierra las otras pestañas antiguas: esas versiones todavía no participan en la protección de sesiones.
 
 ## Nuevo en la beta 0.6.1
 
@@ -84,11 +93,11 @@ La descarga e inicialización del modelo real se comprueban aparte cuando hay ac
 
 Los navegadores pueden retrasar procesos en segundo plano. El Pomodoro usa una hora de finalización absoluta y se actualiza al volver. Las rutinas se pausan al ocultar la app para no sumar tiempo desatendido. Si un temporizador terminó hace más de diez minutos con la app cerrada, se descarta el aviso antiguo.
 
-Exporta un respaldo periódicamente. Si el navegador impide guardar, la app muestra un aviso para que exportes antes de cerrar. No hay sincronización entre dispositivos ni coordinación de sesiones simultáneas en varias pestañas.
+Exporta un respaldo periódicamente. Si el navegador impide guardar, la app muestra un aviso para que exportes antes de cerrar. No hay sincronización entre dispositivos. Solo una pestaña puede modificar datos por navegador; las demás permanecen bloqueadas hasta que cierres la activa y las recargues. Se requiere un navegador actual con Web Locks. Si no está disponible, la app explica cómo abrirla en Safari o Chrome.
 
 ## Encuadre amplio en iPhone
 
-En el ejercicio, «Probar encuadre amplio · trasera» solicita la cámara trasera, busca una lente identificada como ultra gran angular y aplica el zoom mínimo permitido. Tras dar permiso aparece un selector si Safari ofrece varias cámaras. Los nombres y el acceso dependen del dispositivo y del navegador; no se promete 0,5 cuando Safari no lo expone. La interfaz confirma la lente o indica la limitación. Se puede volver al encuadre automático. Una lente guardada que desaparece vuelve a la selección automática.
+En el ejercicio, abre «Ajustes de cámara». «Probar encuadre amplio · trasera» solicita la cámara trasera, busca una lente identificada como ultra gran angular y aplica el zoom mínimo permitido. Tras dar permiso aparece un selector si Safari ofrece varias cámaras. Los nombres y el acceso dependen del dispositivo y del navegador; no se promete 0,5 cuando Safari no lo expone. La interfaz confirma la lente o indica la limitación. Se puede volver al encuadre automático. Una lente guardada que desaparece vuelve a la selección automática.
 
 Para sentadillas deben verse cadera, rodillas y tobillos; la cabeza puede quedar fuera. Mantén las piernas hacia el centro de la imagen, también con ultra gran angular, y calibra con el iPhone fijo. El vídeo se muestra completo, sin recortarlo para llenar la vista. La calibración queda separada por lente, zoom y orientación; los perfiles antiguos se conservan pero se vuelven a medir cuando no se conoce su lente. Las preferencias de cámara y perfiles permanecen en el dispositivo.
 
@@ -110,15 +119,15 @@ Con el servidor local abierto en otro terminal:
 APP_URL=http://localhost:5180 npm run test:browser
 ```
 
-Las pruebas de cámara cubren ciclos cortos, discontinuidades, diferentes frecuencias de vídeo, visibilidad, perfiles, calibración completa y pruebas aisladas de la actividad, selección de lente, cancelación con permisos pendientes y orientación. Las pruebas de rutinas cubren orden, reproducción, borradores tras recarga, eliminación con deshacer, duración mayor que la pausa, respaldo y restauración sin duplicados, campos inválidos y metas de flexiones al cambiar de día. Las pruebas móviles usan Chromium con perfil Android y WebKit con perfil iPhone; no sustituyen pruebas en teléfonos físicos. Las pruebas cubren bienvenida, pausa de un minuto, compartir nativo y copia alternativa sin datos personales, arranque fallido, actualización con progreso pendiente, instalación y rutas bajo `/pomodoro-squats/`, además de fechas locales y cambio de hora, exclusión de ejemplos, importación, ciclos de detección, recuperación de borradores, pausas, fin de bloques, importación sin HTML ejecutable, atajos, tamaños de 320 a 1440 px, modo oscuro, uso sin conexión y cámara con poses sintéticas. Las capturas se guardan en la carpeta temporal del sistema (`OUTPUT_DIR` permite elegir otra).
+Las pruebas de seguridad de datos reproducen dos pestañas, fallos de escritura, exportación de actividad pendiente, recuperación bloqueada y elección explícita de borrador. Comprueban controles principales visibles a 390 × 664, 320 × 700 y 844 × 390. Las pruebas de cámara cubren ciclos cortos, discontinuidades, diferentes frecuencias de vídeo, visibilidad, perfiles, calibración completa y pruebas aisladas de la actividad, selección de lente, cancelación con permisos pendientes y orientación. Las pruebas de rutinas cubren orden, reproducción, borradores tras recarga, eliminación con deshacer, duración mayor que la pausa, respaldo y restauración sin duplicados, campos inválidos y metas de flexiones al cambiar de día. Las pruebas móviles usan Chromium con perfil Android y WebKit con perfil iPhone; no sustituyen pruebas en teléfonos físicos. Las pruebas cubren bienvenida, pausa de un minuto, compartir nativo y copia alternativa sin datos personales, arranque fallido, actualización con progreso pendiente, instalación y rutas bajo `/pomodoro-squats/`, además de fechas locales y cambio de hora, exclusión de ejemplos, importación, ciclos de detección, recuperación de borradores, pausas, fin de bloques, importación sin HTML ejecutable, atajos, tamaños de 320 a 1440 px, modo oscuro, uso sin conexión y cámara con poses sintéticas. Las capturas se guardan en la carpeta temporal del sistema (`OUTPUT_DIR` permite elegir otra).
 
 ## Archivos
 
-`index.html` y `styles.css` definen la interfaz; `app.js`, los flujos y dispositivos; `camera-options.js`, selección de lente y zoom; `core.js`, validación y fechas; `pose-counter.js`, medición y ciclos; `calibration-model.js` y `camera-guide.js`, calibración y guía; `routine-model.js` y `routine-editor.js`, validación y edición de rutinas; `figure.js` y `routines.js`, demostraciones y rutinas. `boot.js` protege el arranque; `companion.js` contiene bienvenida, compartir, instalación, ayuda y actualización; `release.js` identifica la versión. `sw.js` conserva un paquete completo por versión para abrir sin conexión.
+`index.html` y `styles.css` definen la interfaz; `app.js`, los flujos y dispositivos; `camera-options.js`, selección de lente y zoom; `core.js`, validación y fechas; `pose-counter.js`, medición y ciclos; `calibration-model.js` y `camera-guide.js`, calibración y guía; `routine-model.js` y `routine-editor.js`, validación y edición de rutinas; `figure.js` y `routines.js`, demostraciones y rutinas. `boot.js` protege el arranque y `session-guard.js` coordina la pestaña activa; `companion.js` contiene bienvenida, compartir, instalación, ayuda y actualización; `release.js` identifica la versión. `sw.js` conserva un paquete completo por versión para abrir sin conexión.
 
 ## Dirección visual
 
-Se conserva la identidad original de terracota y verde salvia, con el temporizador como acción principal y ayuda progresiva para ajustes y respaldos. Referencias de interacción: [progreso con etiqueta y valor](https://ui.shadcn.com/docs/components/base/progress) y [estados vacíos](https://ui.shadcn.com/docs/components/base/empty) de shadcn/ui. Se adaptan los patrones al HTML existente sin incorporar su biblioteca ni copiar su código.
+Se conserva la identidad original de terracota y verde salvia, con el temporizador como acción principal y ayuda progresiva para ajustes y respaldos. El panel secundario sigue el patrón de [Sheet](https://ui.shadcn.com/docs/components/base/sheet), implementado con `dialog` nativo y foco de teclado. Referencias de interacción: [progreso con etiqueta y valor](https://ui.shadcn.com/docs/components/base/progress) y [estados vacíos](https://ui.shadcn.com/docs/components/base/empty) de shadcn/ui. Se adaptan los patrones al HTML existente sin incorporar su biblioteca ni copiar su código.
 
 ## Publicación y actualizaciones
 

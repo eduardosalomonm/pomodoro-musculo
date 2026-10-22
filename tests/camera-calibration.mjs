@@ -1,3 +1,4 @@
+import {cameraSelect,cameraClick} from './ui-helpers.mjs';
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
@@ -24,7 +25,7 @@ for(const [engine,device,name] of [[webkit,devices['iPhone 13'],'safari-calibrat
     for(const kind of ['squats','pushups-floor','pushups-wall']){
       if(await page.locator('#vRest').isVisible())await page.locator('#restFocus').click();
       await page.locator(kind==='squats'?'#pickSquats':'#pickPushups').click();
-      if(kind!=='squats')await page.locator('#pushupStyle').selectOption(kind==='pushups-wall'?'wall':'floor');
+      if(kind!=='squats')await cameraSelect(page,'pushupStyle',kind==='pushups-wall'?'wall':'floor');
       await page.evaluate(lm=>window.syntheticPose=lm,poseFixture(170,kind));const before=await page.locator('#time').innerText();
       await page.locator('#calibrateBtn').click();await page.waitForFunction(()=>document.getElementById('camBtn').textContent==='Apagar cámara');
       assert.equal(await page.locator('#plusRep').isDisabled(),true);await page.evaluate(()=>document.activeElement?.blur());await page.keyboard.press('+');assert.equal(await page.locator('#repCount').innerText(),'0');await hold(null,1,kind);assert.match(await page.locator('#calibrationTitle').innerText(),/Encuadre/);
@@ -36,9 +37,9 @@ for(const [engine,device,name] of [[webkit,devices['iPhone 13'],'safari-calibrat
     }
     const profiles=await page.evaluate(()=>JSON.parse(localStorage.getItem('ps.calibration')));assert.equal(Object.keys(profiles).length,3);assert.equal(await page.locator('#sToday').innerText(),'1');assert.equal(await page.locator('#sPushups').innerText(),'2');
     // Retest the saved calibration without storing practice reps, then cancel.
-    await page.locator('#restFocus').click();await page.locator('#pickSquats').click();await page.locator('#camBtn').click();await page.waitForFunction(()=>document.getElementById('camBtn').textContent==='Apagar cámara');await page.locator('#testCalibration').click();await hold(170,2,'squats');assert.match(await page.locator('#calibrationTitle').innerText(),/Dos repeticiones/);await page.locator('#cancelCalibration').click();assert.equal(await page.locator('#calibrationPanel').isVisible(),false);assert.equal(await page.locator('#repCount').innerText(),'0');
+    await page.locator('#restFocus').click();await page.locator('#pickSquats').click();await page.locator('#camBtn').click();await page.waitForFunction(()=>document.getElementById('camBtn').textContent==='Apagar cámara');await cameraClick(page,'testCalibration');await hold(170,2,'squats');assert.match(await page.locator('#calibrationTitle').innerText(),/Dos repeticiones/);await page.locator('#cancelCalibration').click();assert.equal(await page.locator('#calibrationPanel').isVisible(),false);assert.equal(await page.locator('#repCount').innerText(),'0');
     // Rear lens is a separate context and a phone rotation cancels capture safely.
-    await page.locator('#cameraFacing').selectOption('environment');await page.waitForFunction(()=>document.getElementById('camBtn').textContent==='Apagar cámara');assert.match(await page.locator('#cameraProfile').innerText(),/Sin calibración/);assert.equal(await page.evaluate(()=>window.cameraRequests.at(-1).video.facingMode.ideal),'environment');
+    await cameraSelect(page,'cameraFacing','environment');await page.waitForFunction(()=>document.getElementById('camBtn').textContent==='Apagar cámara');assert.match(await page.locator('#cameraProfile').innerText(),/Sin calibración/);assert.equal(await page.evaluate(()=>window.cameraRequests.at(-1).video.facingMode.ideal),'environment');
     await page.locator('#calibrateBtn').click();await page.setViewportSize({width:844,height:390});await page.clock.runFor(250);assert.equal(await page.locator('#calibrationPanel').isVisible(),false);assert.equal(await page.locator('#camBtn').innerText(),'Activar cámara');assert.equal(await page.locator('#startBtn').isDisabled(),false);
     // Cancelling while camera permission is still pending cannot restart it later.
     await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=()=>new Promise(resolve=>window.finishCameraPermission=resolve);});
