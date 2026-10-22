@@ -4,7 +4,8 @@ const loading = setTimeout(() => { notice.hidden = false; }, 3000);
 try {
   // Same-origin navigation retains local history and the shared session lock.
   const legacy=/^\/pomodoro-squats\/(?:index\.html)?$/.test(location.pathname);
-  if(legacy&&navigator.onLine){
+  const installed=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  if(legacy&&navigator.onLine&&!installed){
     const destination=new URL('/pomodoro-musculo/',location.origin);destination.search=location.search;destination.hash=location.hash;
     clearTimeout(loading);notice.hidden=false;document.getElementById('loadMessage').textContent='Abriendo Pomodoro Músculo…';
     location.replace(destination.href);

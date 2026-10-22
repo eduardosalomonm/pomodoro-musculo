@@ -1,4 +1,4 @@
-# Pomodoro Músculo · Beta 0.7.2
+# Pomodoro Músculo · Beta 0.7.3
 
 Bloques de foco y pausas con movimiento: sentadillas, flexiones y estiramientos guiados. Sin cuenta; el historial se guarda en este navegador. El vídeo se procesa en el dispositivo.
 
@@ -25,11 +25,11 @@ Abre http://localhost:5180. Usa siempre la misma dirección y puerto: cada direc
 
 Esta beta incluye iconos PNG para Android y un icono específico para la pantalla de inicio de iPhone. La vista dedicada de ejercicio reúne cámara, contador, pausa y guardado en móvil. Incluye una imagen de presentación al compartir el enlace y evita indexación en buscadores mientras siga en beta.
 
-## Nuevo en la beta 0.7.2
+## Nuevo en la beta 0.7.3
 
-- Dirección principal: `/pomodoro-musculo/`. El enlace `/pomodoro-squats/` lleva al nuevo, conservando parámetros y anclas. Ambos pertenecen al mismo dominio: se mantienen el historial, los ajustes y los borradores del navegador, junto con la protección de una sola pestaña activa.
+- Dirección principal: `/pomodoro-musculo/`. En el navegador, el enlace `/pomodoro-squats/` lleva al nuevo, conservando parámetros y anclas. Los accesos ya instalados se mantienen en su dirección para conservar su ámbito y almacenamiento; comparten el enlace nuevo. Ambos pertenecen al mismo dominio: se mantienen el historial, los ajustes y los borradores del navegador, junto con la protección de una sola pestaña activa.
 - Logo vectorial propio: un brazo flexionado que guiña un ojo. Se usa en la cabecera, favicon, iconos de instalación y vista previa al compartir.
-- Cachés independientes por ruta para que una instalación antigua no borre los archivos de la nueva. La versión antigua instalada puede seguir funcionando sin conexión; al abrirla con conexión se dirige al nuevo enlace después de actualizar.
+- Cachés independientes por ruta para que una instalación antigua no borre los archivos de la nueva. La versión antigua instalada sigue funcionando con y sin conexión después de actualizar. En una pestaña normal, la redirección se realiza al abrir con conexión.
 
 ## Nuevo en la beta 0.7.1
 
@@ -141,7 +141,7 @@ Se conserva la identidad original de terracota y verde salvia, con el temporizad
 
 ## Publicación y actualizaciones
 
-GitHub Pages publica `main` desde la raíz, con HTTPS. El repositorio principal es `eduardosalomonm/pomodoro-musculo`. El repositorio `eduardosalomonm/pomodoro-squats` se conserva con la versión puente 0.7.2 para mantener los enlaces y las instalaciones antiguas; no eliminarlo. Publicar primero en la dirección nueva y comprobarla antes de actualizar el puente antiguo. Las siguientes mejoras se publican en el repositorio principal. `.nojekyll` permite servir los módulos estáticos sin transformación. Antes de subir, ejecutar las pruebas y comprobar que no se están incluyendo datos personales.
+GitHub Pages publica `main` desde la raíz, con HTTPS. El repositorio principal es `eduardosalomonm/pomodoro-musculo`. El repositorio `eduardosalomonm/pomodoro-squats` se conserva con la versión puente 0.7.3 para mantener los enlaces y las instalaciones antiguas; no eliminarlo. Publicar primero en la dirección nueva y comprobarla antes de actualizar el puente antiguo. Las siguientes mejoras se publican en el repositorio principal. `.nojekyll` permite servir los módulos estáticos sin transformación. Antes de subir, ejecutar las pruebas y comprobar que no se están incluyendo datos personales.
 
 Para cada versión nueva, cambiar `VERSION` en `release.js`, `CACHE` en `sw.js` y la versión de `package.json`. El worker descarga el paquete entero antes de activarse; una actualización espera hasta que el usuario pulsa «Guardar y actualizar». Se guarda la actividad pendiente y se recarga, sin borrar el historial. Los archivos de una versión se sirven desde el mismo paquete para evitar mezclar módulos antiguos y nuevos. Probar esta transición con `tests/update.mjs`.
 

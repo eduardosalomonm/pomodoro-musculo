@@ -25,8 +25,8 @@ try{
    await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:join(tmpdir(),`musculo-${name}-brand.png`)});
    const second=await context.newPage();await second.goto(`${origin}${oldPath}`);await second.waitForURL(`${origin}${newPath}`);await second.locator('html[data-blocked="session-busy"]').waitFor();assert.equal(await second.locator('#main').evaluate(el=>el.inert),true);await second.close();
    const newCache=await page.evaluate(async()=> (await caches.keys()).find(k=>k.includes('%2Fpomodoro-musculo%2F')));assert.ok(newCache);await page.close();
-   // An installed legacy app may start offline: keep it functional and isolate its cache.
-   const legacy=await context.newPage();await legacy.addInitScript(()=>Object.defineProperty(navigator,'onLine',{get:()=>false}));await legacy.goto(`${origin}${oldPath}`);await legacy.locator('html[data-ready="true"]').waitFor();await legacy.waitForFunction(()=>!!navigator.serviceWorker.controller);
+   // Existing home-screen apps retain their original scope online and offline.
+   const legacy=await context.newPage();await legacy.addInitScript(()=>Object.defineProperty(navigator,'standalone',{get:()=>true}));await legacy.goto(`${origin}${oldPath}`);await legacy.locator('html[data-ready="true"]').waitFor();await legacy.waitForFunction(()=>!!navigator.serviceWorker.controller);
    const keys=await legacy.evaluate(()=>caches.keys());assert.ok(keys.includes(newCache));assert.ok(keys.some(k=>k.includes('%2Fpomodoro-squats%2F')));
    if(engine===chromium){await context.setOffline(true);await legacy.reload();await legacy.locator('html[data-ready="true"]').waitFor();assert.equal(await legacy.locator('#sToday').innerText(),'5');}
    await legacy.close();const fresh=await context.newPage();await fresh.goto(`${origin}${newPath}`);await fresh.locator('html[data-ready="true"]').waitFor();assert.equal(await fresh.locator('#sPushups').innerText(),'3');assert.deepEqual(errors,[]);
