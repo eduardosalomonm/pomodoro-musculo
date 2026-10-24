@@ -60,7 +60,8 @@ export function initCompanion({store, toast, startTrial, beforeUpdate, hasSessio
 
   if (!('serviceWorker' in navigator)) return;
   let registration, updating = false;
-  const showUpdate = () => { if (registration?.waiting) $('updateNotice').hidden = false; };
+  // Only a worker waiting behind an active controller is an update; the first install passes through "waiting" briefly.
+  const showUpdate = () => { if (registration?.waiting && navigator.serviceWorker.controller) $('updateNotice').hidden = false; };
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (updating) location.reload(); });
   $('updateAppBtn').onclick = () => {
     if (!registration?.waiting) { toast('La app ya está actualizada.'); $('updateNotice').hidden = true; return; }

@@ -36,6 +36,7 @@
   <div class="intro"><div><p class="eyebrow">MENOS SILLA, MÁS ENERGÍA</p><h1>Un poco de foco.<br>Un poco de <span>movimiento.</span></h1></div><p class="intro-note">Haz espacio para ambas cosas.<br>Tu próxima pausa también cuenta.</p></div>
   <p id="storageWarning" class="notice" role="alert" hidden>No se pueden guardar los cambios en este navegador. Exporta un respaldo antes de cerrar.</p>
   <p id="recoveryNote" class="notice" role="status" hidden></p>
+  <p id="backupNudge" class="notice backup-nudge" role="status" hidden><span id="backupNudgeText"></span> <button class="sm" id="backupNudgeBtn">Exportar respaldo</button></p>
   <p id="loadNotice" class="notice" role="alert" hidden><span id="loadMessage">Cargando tu espacio…</span> <button id="retryLoad" class="sm" hidden>Volver a cargar</button></p>
   <noscript><p class="notice">Activa JavaScript para usar el temporizador. No necesitas crear una cuenta.</p></noscript>
   <p id="connectionNotice" class="notice" role="status" hidden>Sin conexión. Puedes usar el temporizador y contar a mano; la cámara necesita descargar su modelo.</p>
@@ -57,7 +58,7 @@
       <section class="card" id="breakCard" aria-labelledby="b-title" tabindex="-1">
         <div class="section-head"><div><p class="eyebrow">02 / MUÉVETE</p><h2 id="b-title">Tu próxima pausa</h2></div><span class="break-clock" id="breakClock" hidden></span></div>
         <div class="row break-actions"><button class="sm ghost" id="backToChoices" hidden>← Cambiar actividad</button><button class="sm" id="snoozeBtn" hidden>Posponer 5 min</button><button class="sm ghost" id="skipBtn" hidden>Volver al foco</button></div>
-        <div id="vChoose"><p class="sub" id="chooseHint">Elige cómo quieres moverte. Tu pausa empieza al elegir.</p><div class="choices">
+        <div id="vChoose"><p class="sub" id="chooseHint">Elige cómo quieres moverte. Tu pausa empieza al elegir.</p><button class="primary repeat-last" id="repeatLast" hidden></button><div class="choices">
           <button class="choice" id="pickSquats"><span class="choice-number">01 <span id="squatChoiceTarget">15 reps</span></span><strong>Sentadillas</strong><span>Activa las piernas.<br>Cámara o conteo manual.</span><span class="choice-arrow" aria-hidden="true">↗</span><small class="preferred" hidden>Tu última elección</small></button>
           <button class="choice" id="pickPushups"><span class="choice-number">02 <span id="pushupChoiceTarget">8 reps</span></span><strong>Flexiones</strong><span>En suelo o pared.<br>Cámara o conteo manual.</span><span class="choice-arrow" aria-hidden="true">↗</span><small class="preferred" hidden>Tu última elección</small></button>
           <button class="choice" id="pickStretch"><span class="choice-number">03 <span>1–3 min</span></span><strong>Estiramientos</strong><span>Suelta cuello y espalda.<br>Rutinas guiadas con voz.</span><span class="choice-arrow" aria-hidden="true">↗</span><small class="preferred" hidden>Tu última elección</small></button>

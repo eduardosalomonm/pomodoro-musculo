@@ -1,4 +1,4 @@
-# Pomodoro Músculo · Beta 0.7.3
+# Pomodoro Músculo · Beta 0.8.0
 
 Bloques de foco y pausas con movimiento: sentadillas, flexiones y estiramientos guiados. Sin cuenta; el historial se guarda en este navegador. El vídeo se procesa en el dispositivo.
 
@@ -24,6 +24,18 @@ Abre http://localhost:5180. Usa siempre la misma dirección y puerto: cada direc
 4. En Ayuda y privacidad están las instrucciones de instalación y el enlace para reportar problemas. Los comentarios de GitHub son públicos y requieren cuenta; no adjuntar respaldos personales.
 
 Esta beta incluye iconos PNG para Android y un icono específico para la pantalla de inicio de iPhone. La vista dedicada de ejercicio reúne cámara, contador, pausa y guardado en móvil. Incluye una imagen de presentación al compartir el enlace y evita indexación en buscadores mientras siga en beta.
+
+## Nuevo en la beta 0.8.0
+
+- **Sentadillas de frente**, pensadas para la cámara del portátil: si la cámara te ve de frente (hombros anchos en la imagen), cuenta por cuánto se acorta el muslo al bajar, normalizado por el ancho de hombros. No hacen falta tobillos visibles. La referencia de pie se ajusta sola con el percentil 90 de los últimos 5 s, así que un fotograma ruidoso no bloquea el conteo. La calibración guiada sigue siendo para la vista de lado.
+- **Conteo más estable:** un salto de fotogramas de menos de 1 s, o una pérdida breve del encuadre al fondo de la sentadilla, ya no borra la repetición en curso. Hay histéresis entre vista frontal y lateral para que no oscile.
+- **Repetir la última pausa** con un solo botón (por ejemplo, «Repetir: Sentadillas · 15 reps con cámara»). Si ya usaste la cámara, la activa directamente. Con estiramientos, repite la última rutina.
+- **Avisos más fiables:** las notificaciones salen por el service worker, también con la ventana visible pero sin foco; al tocarlas se abre la app. El fin de bloque ya no se retrasa en pestañas en segundo plano. El sonido se desbloquea en el primer toque tras recargar.
+- **El foco cuenta:** al empezar una pausa antes de tiempo se suman los minutos ya trabajados, y un bloque que terminó con la app cerrada se acredita al volver.
+- **Arranque de cámara más rápido:** el modelo se descarga en paralelo con la cámara, se precarga al empezar la pausa (si ya usaste la cámara y la última elección no fue estirar) y queda guardado para usarlo sin conexión.
+- **Estiramientos de cuello mejores:** «Mentón al pecho» pasa a ser retracción de mentón, y se añade el estiramiento del elevador de la escápula a cada lado.
+- **Datos:** se pide almacenamiento persistente al primer guardado, y aparece un aviso semanal para exportar un respaldo cuando hay 20 registros o más.
+- Corregido: los atajos de teclado ya funcionan después de pulsar un botón. Ya no aparece un falso «Hay una actualización» en la primera instalación.
 
 ## Nuevo en la beta 0.7.3
 

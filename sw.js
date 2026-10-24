@@ -1,8 +1,11 @@
 // A complete shell is cached before activation, so one release never mixes with another.
 // Each path owns its cache; the legacy app cannot delete the new app's shell.
 const CACHE_PREFIX = `pomodoro-musculo-${encodeURIComponent(new URL(self.registration.scope).pathname)}-`;
-const CACHE = `${CACHE_PREFIX}v0.7.3`;
+const CACHE = `${CACHE_PREFIX}v0.8.0`;
 const SHELL = ['./','index.html','styles.css','boot.js','session-guard.js','app.js','companion.js','release.js','core.js','pose-counter.js','calibration-model.js','camera-guide.js','camera-options.js','figure.js','routines.js','routine-model.js','routine-editor.js','manifest.webmanifest','icon.svg','icons/apple-touch-icon.png','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png'];
+// Pinned camera-model files: versioned URLs, so cache-first is safe. Kept apart from the shell caches.
+const MODEL_CACHE = 'pomodoro-musculo-model-mp-0.10.14-lite-f16-1';
+const isModelAsset = url => url.startsWith('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/') || url === 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 const shellURLs = new Set(SHELL.map(path => new URL(path, self.registration.scope).href));
 self.addEventListener('install', event => event.waitUntil(
   caches.open(CACHE).then(cache => cache.addAll(SHELL.map(path => new Request(path, {cache:'reload'}))))
@@ -11,9 +14,21 @@ self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 self.addEventListener('activate', event => event.waitUntil(
-  caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())
+  caches.keys().then(keys => Promise.all(keys.filter(key => (key.startsWith(CACHE_PREFIX) && key !== CACHE) || (key.startsWith('pomodoro-musculo-model-') && key !== MODEL_CACHE)).map(key => caches.delete(key)))).then(() => self.clients.claim())
 ));
 self.addEventListener('fetch', event => {
+  if (event.request.method === 'GET' && isModelAsset(event.request.url)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(MODEL_CACHE);
+      const cached = await cache.match(event.request.url);
+      if (cached) return cached;
+      // MediaPipe loads its WASM glue as a no-cors script; fetch with CORS so the response is cacheable (both hosts send ACAO *).
+      const response = await fetch(event.request.url, {mode:'cors', credentials:'omit'});
+      if (response.ok) event.waitUntil(cache.put(event.request.url, response.clone()).catch(() => {}));
+      return response;
+    })());
+    return;
+  }
   if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
   const navigate = event.request.mode === 'navigate';
   if (!navigate && !shellURLs.has(event.request.url)) return;
@@ -23,4 +38,12 @@ self.addEventListener('fetch', event => {
     if (cached) return cached;
     try { return await fetch(event.request); } catch { return Response.error(); }
   })());
+});
+// A tapped reminder brings the app to the front, or opens it.
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(self.clients.matchAll({type:'window', includeUncontrolled:true}).then(list => {
+    const mine = list.find(c => c.url.startsWith(self.registration.scope));
+    return mine ? mine.focus() : self.clients.openWindow('./');
+  }));
 });
